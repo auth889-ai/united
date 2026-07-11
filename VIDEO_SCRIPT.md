@@ -22,9 +22,8 @@ keep it in.
 
 > "Most athletes train alone, which means training blind. FormCoach turns the
 > webcam you already own into a real coach: it counts reps, scores every rep
-> out of 100 against the same faults a physiotherapist checks, spots knees
-> caving in — the number one ACL risk — and even notices when fatigue is
-> degrading my form and tells me to rest BEFORE I get hurt."
+> out of 100, flags risky form patterns like knees caving inward, and notices
+> when fatigue is degrading my form — telling me exactly which rep it started."
 
 ## 0:40–1:40 — THE MOVEMENT TWIN (the core — one continuous take)
 
@@ -48,7 +47,7 @@ This sequence IS the pitch. Bad rep, measured correction, improved rep:
 - Vertical jump: "basketball's scouting test, in centimetres, no equipment"
 - Keep it to one breath — the Twin is the star, this is the supporting cast.
 
-## 1:50–2:15 — The YouTube moment (Scene A)
+## 2:00–2:15 — The YouTube moment (Scene A)
 
 Click **🖥 Analyze your screen**, share a YouTube tab playing a squat video
 (queue one beforehand: search "20 bodyweight squats follow along"), press
