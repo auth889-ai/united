@@ -10,10 +10,23 @@ import json
 import os
 
 import anthropic
+import httpx
 
 from .models import AgentReport, Session
 
 MODEL = "claude-opus-4-8"
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llama3.2")
+
+
+def _ollama_available() -> bool:
+    try:
+        return httpx.get(f"{OLLAMA_URL}/api/tags", timeout=1.0).status_code == 200
+    except Exception:
+        return False
+
+
+_ollama = _ollama_available()
 
 AGENTS = [
     {
@@ -65,7 +78,41 @@ if os.environ.get("ANTHROPIC_API_KEY"):
 
 
 def llm_enabled() -> bool:
-    return _client is not None
+    return _client is not None or _ollama
+
+
+def engine_name() -> str:
+    if _client is not None:
+        return "claude"
+    if _ollama:
+        return f"ollama:{OLLAMA_MODEL}"
+    return "rules"
+
+
+async def ollama_report(agent: dict, session: Session, history: list[Session]) -> AgentReport:
+    """Local, private generative agent via Ollama (no key, nothing leaves the machine)."""
+    payload = {
+        "session": session.model_dump(),
+        "recent_history": [h.model_dump() for h in history[-6:]],
+    }
+    prompt = (
+        f"{agent['prompt']} Base every claim strictly on this JSON data — never invent stats.\n"
+        f"DATA: {json.dumps(payload)}\n"
+        'Reply with ONLY a JSON object: {"score": <0-100 int>, '
+        '"findings": [<2-4 short specific strings>], "reasoning": "<one sentence>"}'
+    )
+    async with httpx.AsyncClient(timeout=30.0) as http:
+        res = await http.post(
+            f"{OLLAMA_URL}/api/chat",
+            json={
+                "model": OLLAMA_MODEL,
+                "messages": [{"role": "user", "content": prompt}],
+                "format": "json",
+                "stream": False,
+            },
+        )
+        res.raise_for_status()
+        return AgentReport.model_validate_json(res.json()["message"]["content"])
 
 
 def rules_report(agent: dict, session: Session, history: list[Session]) -> AgentReport:
@@ -142,6 +189,12 @@ async def run_agent(agent: dict, session: Session, history: list[Session]) -> di
             report = await llm_report(agent, session, history)
             engine = "claude"
         except (anthropic.APIError, anthropic.APIConnectionError):
+            report = rules_report(agent, session, history)
+    elif _ollama:
+        try:
+            report = await ollama_report(agent, session, history)
+            engine = f"ollama:{OLLAMA_MODEL}"
+        except Exception:
             report = rules_report(agent, session, history)
     else:
         report = rules_report(agent, session, history)

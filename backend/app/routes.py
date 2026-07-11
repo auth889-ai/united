@@ -19,7 +19,7 @@ COACH_KEY = os.environ.get("COACH_KEY", "coach-demo")
 
 @router.get("/health")
 def health() -> dict:
-    return {"ok": True, "llm": agents.llm_enabled(), "model": agents.MODEL if agents.llm_enabled() else None}
+    return {"ok": True, "llm": agents.llm_enabled(), "engine": agents.engine_name()}
 
 
 @router.post("/analyze")
