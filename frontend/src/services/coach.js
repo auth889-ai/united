@@ -358,3 +358,37 @@ export async function visionReport(shots, timeline, onSentence) {
   }
   return { text: full.trim(), model };
 }
+
+// Mode 2 — AI Eyes: while you train, a local vision model looks at a live
+// snapshot and speaks one short line about what it actually sees. Fully
+// on-device; a frame is analyzed only if the previous one has finished.
+let eyesInFlight = false;
+export async function liveVisionLine(imgDataUrl, model, exercise) {
+  if (eyesInFlight) return null;
+  eyesInFlight = true;
+  try {
+    const res = await fetch("http://localhost:11434/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model,
+        stream: false,
+        options: { num_predict: 35 },
+        messages: [{
+          role: "user",
+          content:
+            `You are watching an athlete do ${exercise} live through a camera ` +
+            "(skeleton overlay drawn on them). In ONE short spoken coaching line " +
+            "(max 14 words), tell them what you see about their body position. " +
+            "No preamble, just the line.",
+          images: [imgDataUrl.split(",")[1]],
+        }],
+      }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!res.ok) return null;
+    const text = (await res.json()).message?.content?.trim();
+    return text ? text.replace(/^["']|["']$/g, "") : null;
+  } catch { return null; }
+  finally { eyesInFlight = false; }
+}

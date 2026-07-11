@@ -1,5 +1,5 @@
 import { EXERCISES, PRIORITY, LM, angle } from "./engine/exercises.js";
-import { speak, speakRep, speakQueued, setVoice, summarize, coachReply, coachReplyStream, coachReview, liveCoachLine, visionReport, findVisionModel, getLLMConfig, setLLMConfig } from "./services/coach.js";
+import { speak, speakRep, speakQueued, setVoice, summarize, coachReply, coachReplyStream, coachReview, liveCoachLine, visionReport, findVisionModel, liveVisionLine, getLLMConfig, setLLMConfig } from "./services/coach.js";
 import { renderChart, renderTable } from "./ui/chart.js";
 import { voiceControlSupported, startVoiceControl, stopVoiceControl, setBargeIn } from "./services/voice.js";
 import { requestReport } from "./ui/report.js";
@@ -409,8 +409,7 @@ function updateScoreRing() {
 
 // Evidence snapshot — like a coach photographing the exact moment of a fault.
 // Stays in memory only: never uploaded, never persisted (privacy by default).
-function captureFaultShot(label) {
-  if (state.faultShots.length >= 12) return; // enough evidence, not a film reel
+function frameSnapshot() {
   const w = 320;
   const h = Math.round((w * (overlay.height || 3)) / (overlay.width || 4));
   const c = document.createElement("canvas");
@@ -421,10 +420,15 @@ function captureFaultShot(label) {
   if (video.videoWidth) cx.drawImage(video, 0, 0, w, h);
   else { cx.fillStyle = "#141228"; cx.fillRect(0, 0, w, h); }
   cx.drawImage(overlay, 0, 0, w, h);
+  return c.toDataURL("image/jpeg", 0.6);
+}
+
+function captureFaultShot(label) {
+  if (state.faultShots.length >= 12) return; // enough evidence, not a film reel
   state.faultShots.push({
     at: Math.round((performance.now() - state.sessionStart) / 1000),
     text: label,
-    img: c.toDataURL("image/jpeg", 0.6),
+    img: frameSnapshot(),
   });
 }
 
@@ -927,6 +931,41 @@ $("bargeToggle").onclick = () => {
   $("bargeToggle").textContent = on ? "🎧 Barge-in on" : "🎧 Barge-in off";
   setBargeIn(on);
   if (on) speak("Barge-in enabled. Wear headphones, and feel free to interrupt me.", { force: true });
+};
+
+/* Mode 2 — Live Coach: the vision LLM watches live snapshots and speaks
+   about what it actually SEES, while the mic stays open so the athlete can
+   talk back — a real two-way conversation, all on-device.
+   Mode 1 (default) stays pure physics + post-session analysis. */
+let eyesModel = null, eyesTimer = null;
+async function eyesTick() {
+  if (!state.running || !eyesModel || speechSynthesis.speaking) return;
+  const line = await liveVisionLine(frameSnapshot(), eyesModel, state.exercise);
+  if (line && state.running && !speechSynthesis.speaking) {
+    setCue(`👁 ${line}`, "info");
+    speak(line, { force: true });
+  }
+}
+$("eyesToggle").onclick = async () => {
+  const turningOn = $("eyesToggle").getAttribute("aria-pressed") !== "true";
+  if (turningOn) {
+    eyesModel = await findVisionModel();
+    if (!eyesModel) {
+      setCue("No local vision model — run: ollama pull moondream", "warn");
+      speak("Live Coach needs a vision model. Pull moondream in Ollama first.", { force: true });
+      return;
+    }
+    eyesTimer = setInterval(eyesTick, 9000);
+    // open the athlete's side of the conversation too
+    const mic = $("micToggle");
+    if (!mic.disabled && mic.getAttribute("aria-pressed") !== "true") mic.click();
+    speak("Live Coach on. I can see you now — and you can talk to me any time.", { force: true });
+  } else {
+    clearInterval(eyesTimer);
+    eyesModel = null;
+  }
+  $("eyesToggle").setAttribute("aria-pressed", turningOn);
+  $("eyesToggle").textContent = turningOn ? "👁 Live Coach: on" : "👁 Live Coach: off";
 };
 
 $("ghostToggle").onclick = () => {

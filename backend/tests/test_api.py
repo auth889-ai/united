@@ -2,6 +2,7 @@
 
 import os
 import sys
+import uuid
 from pathlib import Path
 
 # Tests must be deterministic: force the rules engine regardless of any
@@ -55,10 +56,13 @@ def test_analyze_flags_fault_in_injury_report():
 
 
 def test_reports_persist():
-    before = len(client.get("/api/reports?limit=100&key=coach-demo").json())
-    client.post("/api/analyze", json={"session": SESSION, "history": []})
-    after = len(client.get("/api/reports?limit=100&key=coach-demo").json())
-    assert after == before + 1
+    # tag the session with a unique athlete so the check is independent of
+    # how many rows the dev database has accumulated
+    marker = f"pytest-{uuid.uuid4().hex[:12]}"
+    session = {**SESSION, "athlete": marker}
+    client.post("/api/analyze", json={"session": session, "history": []})
+    reports = client.get("/api/reports?limit=5&key=coach-demo").json()
+    assert any(r.get("athlete") == marker for r in reports)
 
 
 def test_reports_require_coach_key():
