@@ -364,7 +364,11 @@ function onFrame(lm) {
         vsPersonalBest: twinDeviation || "matching their best",
         fatigueWarning: fatigueWarned,
       }).then((line) => {
-        if (line && state.running) { speak(line); setCue("🧠 " + line, "good"); }
+        // lowest-priority voice: never interrupt a safety cue mid-sentence
+        if (line && state.running && !speechSynthesis.speaking) {
+          speak(line);
+          setCue("🧠 " + line, "good");
+        }
       });
     }
     $("repCount").textContent = state.reps;
