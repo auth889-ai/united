@@ -40,9 +40,10 @@ Built solo in under 48 hours for **United Hacks V7** (Sports track).
 - **▶ Demo mode — no camera needed**: a synthetic athlete performs squats (including
   deliberately bad reps) through the same biomechanics engine, so judges and visitors
   see the AI coaching live in 5 seconds
-- **6 drills covering all three athletic pillars** — *strength*: Squat · Push-up · Bicep
-  curl; *explosive power*: **Vertical jump test** (measures height in cm, no equipment);
-  *conditioning & agility*: **Jumping jacks** · **High knees** (football/basketball)
+- **7 drills covering four athletic pillars** — *strength*: Squat · Push-up · Bicep curl;
+  *explosive power*: **Vertical jump** (cm, no equipment); *conditioning & agility*:
+  **Jumping jacks** · **High knees**; *core stability*: **Plank** with a live body-line
+  hold timer and sag detection
 - **Real-time pose tracking** — 33 body landmarks at ~30fps (MediaPipe **full** model),
   EMA-smoothed for stable angles and a steady skeleton overlay
 - **Biomechanics engine** — joint-angle state machines detect reps and phases; each rep

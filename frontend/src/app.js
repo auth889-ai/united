@@ -135,6 +135,7 @@ const smoother = createSmoother();
 /* ---------- telestration: live joint-angle readouts on the athlete ---------- */
 
 const ANGLE_TRIPLES = {
+  plank: [[LM.L_SHOULDER, LM.L_HIP, LM.L_ANKLE], [LM.R_SHOULDER, LM.R_HIP, LM.R_ANKLE]],
   squat: [[LM.L_HIP, LM.L_KNEE, LM.L_ANKLE], [LM.R_HIP, LM.R_KNEE, LM.R_ANKLE]],
   pushup: [[LM.L_SHOULDER, LM.L_ELBOW, LM.L_WRIST], [LM.R_SHOULDER, LM.R_ELBOW, LM.R_WRIST]],
   curl: [[LM.L_SHOULDER, LM.L_ELBOW, LM.L_WRIST], [LM.R_SHOULDER, LM.R_ELBOW, LM.R_WRIST]],
@@ -749,7 +750,7 @@ function handleIntent(intent, text) {
     case "stop":
       if (state.running) finishSession();
       break;
-    case "squat": case "pushup": case "curl": case "jump": case "jacks": case "knees":
+    case "squat": case "pushup": case "curl": case "jump": case "jacks": case "knees": case "plank":
       selectExercise(intent);
       speak(`${EXERCISES[intent].name} selected. Say start when you're ready.`, { force: true });
       break;

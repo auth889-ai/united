@@ -313,6 +313,48 @@ class HighKneesAnalyzer {
   }
 }
 
+
+// Isometric hold: the plank. Time under a straight body line, with live
+// sag/pike detection. Assumes ~30fps for the displayed hold time.
+class PlankAnalyzer {
+  constructor() { this.reset(); }
+  reset() { this.goodFrames = 0; this.creditedSec = 0; this.bestSec = 0; this.holding = false; }
+  update(lm) {
+    const s = bestSide(lm);
+    if (vis(lm, s.shoulder, s.hip, s.ankle) < 0.5) {
+      return { phase: "—", repDone: false, repScore: null, cues: [{ text: "Get side-on to the camera so I can see your body line.", level: P.INFO }] };
+    }
+    const line = angle(lm[s.shoulder], lm[s.hip], lm[s.ankle]);
+    const cues = [];
+    let repDone = false, repScore = null;
+
+    if (line >= 165) {
+      this.holding = true;
+      this.goodFrames++;
+      const sec = Math.floor(this.goodFrames / 30);
+      if (sec > this.creditedSec) {           // one "rep" per second held
+        this.creditedSec = sec;
+        this.bestSec = Math.max(this.bestSec, sec);
+        repDone = true;
+        repScore = 100;
+        if (sec > 0 && sec % 10 === 0) cues.push({ text: `${sec} seconds — rock solid!`, level: P.INFO });
+      }
+    } else {
+      if (this.holding && line < 150) {
+        cues.push({ text: "Hips sagging — squeeze your glutes, straighten that line.", level: P.CRITICAL });
+      } else if (this.holding) {
+        cues.push({ text: "Line is drifting — brace your core.", level: P.WARN });
+      }
+      this.holding = false;
+    }
+    return {
+      phase: this.holding ? "Holding" : "Set up",
+      repDone, repScore, cues,
+      metric: this.bestSec ? `Hold: ${this.creditedSec}s · best ${this.bestSec}s` : null,
+    };
+  }
+}
+
 export const EXERCISES = {
   squat:  { name: "Squat",         repNoun: "Reps",  make: () => new SquatAnalyzer() },
   pushup: { name: "Push-up",       repNoun: "Reps",  make: () => new PushupAnalyzer() },
@@ -320,6 +362,7 @@ export const EXERCISES = {
   jump:   { name: "Vertical jump", repNoun: "Jumps", make: (getH) => new JumpAnalyzer(getH) },
   jacks:  { name: "Jumping jacks", repNoun: "Reps",  make: () => new JumpingJackAnalyzer() },
   knees:  { name: "High knees",    repNoun: "Steps", make: () => new HighKneesAnalyzer() },
+  plank:  { name: "Plank",         repNoun: "Seconds", make: () => new PlankAnalyzer() },
 };
 
 export const PRIORITY = P;

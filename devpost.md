@@ -31,7 +31,8 @@ but the webcam everyone already owns.
 ## 🏋️ What it does
 FormCoach AI watches you train and coaches you in real time:
 
-- **Six drills across the three pillars every sport trains** — strength (squats,
+- **Seven drills across the four pillars every sport trains** — including an isometric
+  plank with a live hold timer — — strength (squats,
   push-ups, curls), explosive power (vertical jump), and conditioning/agility
   (jumping jacks, high knees — football and basketball staples) — each with its own
   joint-angle state machine over 33 tracked body landmarks.

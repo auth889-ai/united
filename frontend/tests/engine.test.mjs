@@ -86,5 +86,26 @@ for (const leg of ["L", null, "R", null, "L", null, "L", null, "R", null]) {
 // L, R, L count; the second consecutive L is rejected (no alternation), final R counts
 check(`high knees: alternation enforced (got ${strides}, want 4)`, strides === 4);
 
+
+// --- plank: straight line accrues held seconds; sag stops the clock ---
+function plankPose(sag) {
+  const lm = new Array(33).fill(null).map(() => ({ x: 0.5, y: 0.9, z: 0, visibility: 1 }));
+  lm[11] = { x: 0.25, y: 0.60, z: 0, visibility: 1 }; lm[12] = { x: 0.25, y: 0.60, z: 0, visibility: 1 };
+  lm[23] = { x: 0.50, y: sag ? 0.72 : 0.62, z: 0, visibility: 1 };
+  lm[24] = { x: 0.50, y: sag ? 0.72 : 0.62, z: 0, visibility: 1 };
+  lm[27] = { x: 0.75, y: 0.64, z: 0, visibility: 1 }; lm[28] = { x: 0.75, y: 0.64, z: 0, visibility: 1 };
+  return lm;
+}
+const plank = EXERCISES.plank.make();
+let heldSec = 0, sagCued = false;
+for (let i = 0; i < 95; i++) if (plank.update(plankPose(false)).repDone) heldSec++;   // ~3.1s straight
+for (let i = 0; i < 30; i++) {
+  const r = plank.update(plankPose(true));                                            // sagging
+  if (r.repDone) heldSec++;
+  if (r.cues.some((c) => c.text.includes("sagging"))) sagCued = true;
+}
+check(`plank: ~3s straight hold credited (got ${heldSec})`, heldSec === 3);
+check("plank: sagging stops the clock and cues", sagCued);
+
 console.log(failures ? `\n${failures} test(s) FAILED` : "\nALL ENGINE TESTS PASS");
 process.exit(failures ? 1 : 0);
