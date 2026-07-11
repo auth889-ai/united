@@ -33,6 +33,9 @@ const state = {
   repTimes: [],          // performance.now() per completed rep (tempo analytics)
   repHistory: [],        // full measurement timeline for the Coach's Review
   faultShots: [],        // evidence snapshots: the exact frame of each fault
+  sampleShots: [],       // timed form-check snapshots for the visual report
+  lastSampleAt: 0,
+  errorLog: [],          // 📓 written notebook: every fault, timestamped
   sessionStart: 0,
   faults: {},            // cue text -> count
   rafId: null,
@@ -324,6 +327,13 @@ const localOnly = () => $("localOnly").checked;
 
 function onFrame(lm) {
   if (guided?.phase === "rest") return; // resting — the athlete is off the clock
+  // timed form-check snapshots: every 5s, so the visual report can review the
+  // whole session — not only the moments physics flagged
+  const atSec = (performance.now() - state.sessionStart) / 1000;
+  if (atSec - state.lastSampleAt >= 5 && state.sampleShots.length < 10) {
+    state.lastSampleAt = atSec;
+    state.sampleShots.push({ at: Math.round(atSec), text: "form check", img: frameSnapshot() });
+  }
   recordFrame(lm);
   const r = state.analyzer.update(lm);
   $("phaseBadge").textContent = r.phase;
@@ -425,12 +435,14 @@ function frameSnapshot() {
 
 function captureFaultShot(label) {
   if (eyesModel) eyesTick(true); // Live Coach: look at this mistake right now
-  if (state.faultShots.length >= 12) return; // enough evidence, not a film reel
-  state.faultShots.push({
-    at: Math.round((performance.now() - state.sessionStart) / 1000),
-    text: label,
-    img: frameSnapshot(),
-  });
+  const at = Math.round((performance.now() - state.sessionStart) / 1000);
+  // the written notebook records EVERY fault (text is cheap and persists);
+  // photos stop at 12 (memory-only evidence, enough for the visual report)
+  if (state.errorLog.length < 100) {
+    state.errorLog.push({ at, rep: state.reps + 1, text: label });
+  }
+  if (state.faultShots.length >= 12) return;
+  state.faultShots.push({ at, text: label, img: frameSnapshot() });
 }
 
 function setCue(text, cls) {
@@ -504,6 +516,7 @@ function startSession() {
   state.repTimes = []; fatigueWarned = false;
   state.repFrames = []; state.bestRep = null; state.bestRepScore = -1; state.bestMetrics = null; ghostIdx = 0;
   state.repHistory = []; state.sessionStart = performance.now(); state.faultShots = [];
+  state.sampleShots = []; state.lastSampleAt = 0; state.errorLog = [];
   $("repCount").textContent = "0";
   updateScoreRing();
   $("btnSession").textContent = "Finish session";
@@ -527,6 +540,7 @@ function finishSession() {
     avgScore: avg,
     faults: state.faults,
     bestJumpCm: state.analyzer.bestJumpCm || 0,
+    errorLog: state.errorLog,
   };
   if (state.reps > 0) {
     sessionsCache.push(session);
@@ -607,16 +621,25 @@ $("btnVision").onclick = async () => {
   }
   box.textContent = `🔍 ${model} is looking at your fault photos…`;
   let started = false;
+  const shots = [...state.faultShots, ...state.sampleShots]
+    .sort((x, y) => x.at - y.at);
   const result = await visionReport(
-    state.faultShots,
-    state.faultShots.map(({ at, text }) => ({ atSeconds: at, fault: text })),
+    shots,
+    state.errorLog,
     (chunk) => {
-      if (!started) { started = true; box.textContent = "🔍 Visual analysis: "; }
+      if (!started) { started = true; box.textContent = "🔍 Visual walkthrough of your session:"; }
       box.textContent += chunk;
     }
   );
   if (result.error) box.textContent = "Visual analysis unavailable: " + result.error;
 };
+
+const tstamp = (sec) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`;
+
+function notebookHTML(log) {
+  return log.map((n) =>
+    `<p class="note-entry">⏱ ${tstamp(n.at)} · rep ${n.rep} — ${n.text}</p>`).join("");
+}
 
 function showSummary(s) {
   lastSession = s;
@@ -643,7 +666,7 @@ function showSummary(s) {
       ).join("")
     : "";
   $("summaryCoach").textContent = "🎙 Coach: " + summarize(s);
-  $("btnVision").classList.toggle("hidden", state.faultShots.length === 0);
+  $("btnVision").classList.toggle("hidden", state.faultShots.length + state.sampleShots.length === 0);
   $("visionReport").classList.add("hidden");
   $("visionReport").textContent = "";
   $("faultGallery").innerHTML = state.faultShots.length
@@ -652,6 +675,10 @@ function showSummary(s) {
         `<figure class="fault-shot"><img src="${f.img}" alt="fault frame" />
          <figcaption>${Math.floor(f.at / 60)}:${String(f.at % 60).padStart(2, "0")} — ${f.text}</figcaption></figure>`
       ).join("")
+    : "";
+  $("errorNotebook").innerHTML = state.errorLog.length
+    ? `<span class="rep-strip-label">📓 Error notebook — every fault, written down:</span>` +
+      notebookHTML(state.errorLog)
     : "";
   renderCoachReview(s);
   $("summary").scrollIntoView({ behavior: "smooth", block: "center" });
@@ -754,6 +781,13 @@ function refreshProgress() {
   renderStreaks(sessions);
   renderChart($("chart"), sessions);
   renderTable($("chartTable"), sessions);
+  // per-session error notebooks — every session's mistakes, kept separately
+  const withLogs = sessions.filter((s) => s.errorLog?.length).slice().reverse();
+  $("notebooks").innerHTML = withLogs.length
+    ? `<h3 class="notebooks-title">📓 Session notebooks</h3>` + withLogs.map((s) =>
+        `<details class="notebook-session"><summary>${s.shortDate} · ${s.exercise} — ${s.errorLog.length} fault${s.errorLog.length > 1 ? "s" : ""} noted</summary>${notebookHTML(s.errorLog)}</details>`
+      ).join("")
+    : "";
 }
 
 /* ================= chat ================= */
@@ -893,6 +927,12 @@ function handleIntent(intent, text) {
         tag.textContent = reply.engine;
         pending.appendChild(tag);
       });
+      break;
+    }
+    case "stt-offline": {
+      $("micToggle").setAttribute("aria-pressed", "false");
+      $("micToggle").textContent = "🎤 Voice control";
+      setCue("Voice input needs internet (Chrome's recognizer is a cloud service). Typed chat stays fully local.", "warn");
       break;
     }
     case "mic-denied":

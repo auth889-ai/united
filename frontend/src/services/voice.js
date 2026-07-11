@@ -50,6 +50,9 @@ export function startVoiceControl(onIntent) {
   rec.onend = () => { if (active) { try { rec.start(); } catch { /* already starting */ } } };
   rec.onerror = (e) => {
     if (e.error === "not-allowed") { active = false; onIntent("mic-denied"); }
+    // Chrome's speech recognizer is a cloud service — surface that honestly
+    // instead of silently failing when the machine is offline.
+    if (e.error === "network") { active = false; onIntent("stt-offline"); }
   };
 
   active = true;

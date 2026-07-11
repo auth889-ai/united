@@ -153,7 +153,7 @@ class PushupAnalyzer {
 
 class CurlAnalyzer {
   constructor() { this.reset(); }
-  reset() { this.state = "extended"; this.minElbow = 180; this.maxDrift = 0; }
+  reset() { this.state = "extended"; this.minElbow = 180; this.maxDrift = 0; this.flexFrames = 0; }
   update(lm) {
     const s = bestSide(lm);
     if (vis(lm, s.shoulder, s.elbow, s.wrist) < 0.5) {
@@ -164,17 +164,23 @@ class CurlAnalyzer {
     const cues = [];
     let repDone = false, repScore = null;
 
-    if (this.state === "extended" && elbow < 80) this.state = "flexed";
+    // Register the rep at 100° (matching published exercise-correction research)
+    // so shallow curls are COUNTED and coached, not silently ignored.
+    if (this.state === "extended" && elbow < 100) { this.state = "flexed"; this.flexFrames = 0; }
     if (this.state === "flexed") {
+      this.flexFrames++;
       this.minElbow = Math.min(this.minElbow, elbow);
       this.maxDrift = Math.max(this.maxDrift, drift);
       if (drift > 30) cues.push({ text: "Pin your elbow to your side — no swinging.", level: P.WARN });
-      if (elbow > 150) {
+      if (elbow > 150 && this.flexFrames < 4) { // noise blip, not a rep
+        this.state = "extended"; this.minElbow = 180; this.maxDrift = 0;
+      } else if (elbow > 150) {
         this.state = "extended";
         repDone = true;
         repScore = 100;
         this.lastRepMetrics = { extension: Math.round(this.minElbow), drift: Math.round(this.maxDrift) };
-        if (this.minElbow > 60) { repScore -= 15; cues.push({ text: "Squeeze all the way up at the top.", level: P.INFO }); }
+        if (this.minElbow > 80) { repScore -= 30; cues.push({ text: "Curl higher — bring the weight all the way up.", level: P.WARN }); }
+        else if (this.minElbow > 60) { repScore -= 15; cues.push({ text: "Squeeze all the way up at the top.", level: P.INFO }); }
         if (this.maxDrift > 35) repScore -= 25;
         else if (this.maxDrift > 25) repScore -= 10;
         if (repScore >= 90) cues.push({ text: "Strict curl — textbook.", level: P.INFO });

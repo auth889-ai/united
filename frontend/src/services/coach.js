@@ -319,42 +319,52 @@ export async function findVisionModel() {
 export async function visionReport(shots, timeline, onSentence) {
   const model = await findVisionModel();
   if (!model) return { error: "no-vision-model" };
-  const images = shots.slice(0, 4).map((s) => s.img.split(",")[1]); // base64 payloads
-  const res = await fetch("http://localhost:11434/api/chat", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model,
-      stream: true,
-      messages: [{
-        role: "user",
-        content:
-          "You are a strength coach reviewing evidence photos from a training session. " +
-          "Each image is the exact moment a form fault was detected (skeleton overlay drawn on the athlete). " +
-          "Fault log with timestamps: " + JSON.stringify(timeline) + ". " +
-          "Describe what you SEE in each image — body position, what is wrong, how to fix it. " +
-          "Be specific and practical, 150 words max, second person.",
-        images,
-      }],
-    }),
-  });
-  if (!res.ok) return { error: `vision ${res.status}` };
-  const reader = res.body.getReader();
-  const dec = new TextDecoder();
-  let buf = "", full = "";
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buf += dec.decode(value, { stream: true });
-    const lines = buf.split("\n");
-    buf = lines.pop();
-    for (const line of lines) {
-      if (!line.trim()) continue;
-      try {
-        const chunk = JSON.parse(line).message?.content || "";
-        if (chunk) { full += chunk; onSentence(chunk); }
-      } catch { /* partial */ }
-    }
+  // Small vision models reason best about ONE image at a time — walk the
+  // session chronologically, one timestamped snapshot per request.
+  const picks = shots.slice(0, 8);
+  let full = "";
+  for (const s of picks) {
+    const stamp = `${Math.floor(s.at / 60)}:${String(s.at % 60).padStart(2, "0")}`;
+    const head = `\n\n⏱ ${stamp} — ${s.text}\n`;
+    full += head; onSentence(head);
+    try {
+      const res = await fetch("http://localhost:11434/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model,
+          stream: true,
+          options: { num_predict: 90 },
+          messages: [{
+            role: "user",
+            content:
+              `You are a strength coach. This photo shows an athlete at ${stamp} into a training session` +
+              (s.text === "form check" ? "." : `, when the measurement engine flagged: "${s.text}".`) +
+              " A skeleton overlay is drawn on them. In 1-2 sentences, describe what you SEE in their" +
+              " body position and give one concrete fix. Second person, no preamble.",
+            images: [s.img.split(",")[1]],
+          }],
+        }),
+      });
+      if (!res.ok) continue;
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      let buf = "";
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop();
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const chunk = JSON.parse(line).message?.content || "";
+            if (chunk) { full += chunk; onSentence(chunk); }
+          } catch { /* partial line */ }
+        }
+      }
+    } catch { /* skip this shot, keep walking the timeline */ }
   }
   return { text: full.trim(), model };
 }
