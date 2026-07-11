@@ -835,6 +835,30 @@ $("tableToggle").onclick = () => {
   }
 })();
 
+/* ---------- tabs: Train / Progress / Coach as separate screens ---------- */
+
+const TABS = {
+  train: ["train", "summary", "report"],
+  progress: ["progress"],
+  coach: ["coach"],
+};
+
+function showTab(name) {
+  if (!TABS[name]) name = "train";
+  const visible = new Set(TABS[name]);
+  for (const ids of Object.values(TABS)) {
+    for (const id of ids) {
+      document.getElementById(id)?.classList.toggle("tab-hidden", !visible.has(id));
+    }
+  }
+  document.querySelectorAll('.topnav a[data-tab]').forEach((link) => {
+    link.classList.toggle("active", link.dataset.tab === name);
+  });
+}
+
+window.addEventListener("hashchange", () => showTab(location.hash.slice(1)));
+showTab(location.hash.slice(1) || "train");
+
 // Installable PWA: relative path so it works at both / and /united/ (GitHub Pages)
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("sw.js").catch(() => {});

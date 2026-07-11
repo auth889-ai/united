@@ -3,3 +3,4 @@ backend/formcoach.db
 .DS_Store
 
 tests/
+test1/
