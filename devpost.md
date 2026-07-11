@@ -27,8 +27,10 @@ but the webcam everyone already owns.
 ## 🏋️ What it does
 FormCoach AI watches you train and coaches you in real time:
 
-- **Counts reps and detects movement phases** for squats, push-ups and bicep curls
-  using joint-angle state machines over 33 tracked body landmarks.
+- **Six drills across the three pillars every sport trains** — strength (squats,
+  push-ups, curls), explosive power (vertical jump), and conditioning/agility
+  (jumping jacks, high knees — football and basketball staples) — each with its own
+  joint-angle state machine over 33 tracked body landmarks.
 - **Scores every rep 0–100** against the same faults a physiotherapist checks —
   squat depth, torso lean, body-line collapse, elbow drift — and shows a live
   form-score ring.

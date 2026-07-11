@@ -47,5 +47,44 @@ for (let i = 0; i < 2; i++) if (squat3.update(down).repDone) blipReps++;  // 2-f
 for (let i = 0; i < 30; i++) if (squat3.update(up).repDone) blipReps++;
 check("2-frame noise blip does not count as a rep", blipReps === 0);
 
+
+// --- jumping jacks: open/close cycles count; alternation for high knees ---
+function jackPose(open) {
+  const lm = new Array(33).fill(null).map(() => ({ x: 0.5, y: 0.5, z: 0, visibility: 1 }));
+  lm[0]  = { x: 0.5, y: 0.15, z: 0, visibility: 1 };               // nose
+  lm[11] = { x: 0.44, y: 0.3, z: 0, visibility: 1 }; lm[12] = { x: 0.56, y: 0.3, z: 0, visibility: 1 };
+  lm[23] = { x: 0.46, y: 0.55, z: 0, visibility: 1 }; lm[24] = { x: 0.54, y: 0.55, z: 0, visibility: 1 };
+  if (open) {
+    lm[15] = { x: 0.3, y: 0.08, z: 0, visibility: 1 }; lm[16] = { x: 0.7, y: 0.08, z: 0, visibility: 1 };  // wrists overhead
+    lm[27] = { x: 0.3, y: 0.93, z: 0, visibility: 1 }; lm[28] = { x: 0.7, y: 0.93, z: 0, visibility: 1 };  // feet wide
+  } else {
+    lm[15] = { x: 0.42, y: 0.55, z: 0, visibility: 1 }; lm[16] = { x: 0.58, y: 0.55, z: 0, visibility: 1 };
+    lm[27] = { x: 0.47, y: 0.93, z: 0, visibility: 1 }; lm[28] = { x: 0.53, y: 0.93, z: 0, visibility: 1 };
+  }
+  return lm;
+}
+const jacks = EXERCISES.jacks.make();
+let jackReps = 0;
+for (let c = 0; c < 5; c++) {
+  for (let i = 0; i < 8; i++) if (jacks.update(jackPose(true)).repDone) jackReps++;
+  for (let i = 0; i < 8; i++) if (jacks.update(jackPose(false)).repDone) jackReps++;
+}
+check(`jumping jacks: 5 cycles -> 5 reps (got ${jackReps})`, jackReps === 5);
+
+function kneePose(leg) { // leg: null | "L" | "R"
+  const lm = new Array(33).fill(null).map(() => ({ x: 0.5, y: 0.5, z: 0, visibility: 1 }));
+  lm[23] = { x: 0.46, y: 0.55, z: 0, visibility: 1 }; lm[24] = { x: 0.54, y: 0.55, z: 0, visibility: 1 };
+  lm[25] = { x: 0.46, y: leg === "L" ? 0.45 : 0.75, z: 0, visibility: 1 };
+  lm[26] = { x: 0.54, y: leg === "R" ? 0.45 : 0.75, z: 0, visibility: 1 };
+  return lm;
+}
+const knees = EXERCISES.knees.make();
+let strides = 0;
+for (const leg of ["L", null, "R", null, "L", null, "L", null, "R", null]) {
+  for (let i = 0; i < 4; i++) if (knees.update(kneePose(leg)).repDone) strides++;
+}
+// L, R, L count; the second consecutive L is rejected (no alternation), final R counts
+check(`high knees: alternation enforced (got ${strides}, want 4)`, strides === 4);
+
 console.log(failures ? `\n${failures} test(s) FAILED` : "\nALL ENGINE TESTS PASS");
 process.exit(failures ? 1 : 0);

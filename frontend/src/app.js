@@ -248,6 +248,44 @@ function loop() {
 /* ================= session logic ================= */
 
 let lastFault = { text: "", at: 0 };
+
+// The coach shouldn't sound like a recording: rotate spoken phrasings while
+// keeping the canonical text for HUD display and fault tracking.
+const CUE_VARIANTS = {
+  "Chest up — you're leaning too far forward.": [
+    "Chest up — you're leaning too far forward.",
+    "Lift that chest, keep your torso tall.",
+    "You're tipping forward — proud chest!",
+  ],
+  "Too shallow — aim to get thighs near parallel.": [
+    "Too shallow — aim to get thighs near parallel.",
+    "Sink deeper — get those thighs parallel.",
+    "Half reps build half strength — go deeper.",
+  ],
+  "Go lower — chest toward the floor.": [
+    "Go lower — chest toward the floor.",
+    "More range — bring your chest to the floor.",
+  ],
+  "Knees caving in — push them out over your toes.": [
+    "Knees caving in — push them out over your toes.",
+    "Careful — knees out, track them over your toes.",
+  ],
+  "Hips sagging — squeeze your glutes, straight body line.": [
+    "Hips sagging — squeeze your glutes, straight body line.",
+    "Tighten up — hips level, body like a plank.",
+  ],
+  "Pin your elbow to your side — no swinging.": [
+    "Pin your elbow to your side — no swinging.",
+    "Strict form — stop swinging that elbow.",
+  ],
+};
+const cueRotation = {};
+function vary(text) {
+  const opts = CUE_VARIANTS[text];
+  if (!opts) return text;
+  cueRotation[text] = ((cueRotation[text] ?? -1) + 1) % opts.length;
+  return opts[cueRotation[text]];
+}
 let fatigueWarned = false;
 
 // Real-life safety: warn when form degrades rep-over-rep (fatigue),
@@ -281,7 +319,7 @@ function onFrame(lm) {
     const top = r.cues.sort((a, b) => b.level - a.level)[0];
     setCue(top.text, top.level === PRIORITY.CRITICAL ? "bad" : top.level === PRIORITY.WARN ? "warn" : "good");
     if (top.level >= PRIORITY.WARN) {
-      speak(top.text);
+      speak(vary(top.text));
       // a held bad position counts as one fault, not one per frame
       const now = performance.now();
       if (top.text !== lastFault.text || now - lastFault.at > 3000) {
@@ -653,7 +691,7 @@ function handleIntent(intent, text) {
     case "stop":
       if (state.running) finishSession();
       break;
-    case "squat": case "pushup": case "curl": case "jump":
+    case "squat": case "pushup": case "curl": case "jump": case "jacks": case "knees":
       selectExercise(intent);
       speak(`${EXERCISES[intent].name} selected. Say start when you're ready.`, { force: true });
       break;

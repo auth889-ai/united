@@ -247,11 +247,76 @@ class JumpAnalyzer {
   }
 }
 
+
+// Conditioning drills — the football/basketball cardio pillar.
+
+class JumpingJackAnalyzer {
+  constructor() { this.reset(); }
+  reset() { this.state = "closed"; this.fullExtension = false; this.openFrames = 0; }
+  update(lm) {
+    if (vis(lm, LM.L_WRIST, LM.R_WRIST, LM.L_ANKLE, LM.R_ANKLE, LM.L_SHOULDER, LM.R_SHOULDER) < 0.5) {
+      return { phase: "—", repDone: false, repScore: null, cues: [{ text: "Step back — I need your hands and feet in frame.", level: P.INFO }] };
+    }
+    const wristsUp = lm[LM.L_WRIST].y < lm[LM.L_SHOULDER].y && lm[LM.R_WRIST].y < lm[LM.R_SHOULDER].y;
+    const wristsHigh = lm[LM.L_WRIST].y < lm[LM.NOSE].y && lm[LM.R_WRIST].y < lm[LM.NOSE].y;
+    const shoulderSpread = Math.abs(lm[LM.L_SHOULDER].x - lm[LM.R_SHOULDER].x);
+    const ankleSpread = Math.abs(lm[LM.L_ANKLE].x - lm[LM.R_ANKLE].x);
+    const legsOpen = ankleSpread > shoulderSpread * 1.35;
+    const cues = [];
+    let repDone = false, repScore = null;
+
+    if (this.state === "closed" && wristsUp && legsOpen) { this.state = "open"; this.openFrames = 0; this.fullExtension = false; }
+    if (this.state === "open") {
+      this.openFrames++;
+      if (wristsHigh) this.fullExtension = true;
+      if (!wristsUp && !legsOpen) {
+        this.state = "closed";
+        if (this.openFrames >= 3) {
+          repDone = true;
+          repScore = this.fullExtension ? 100 : 85;
+          if (!this.fullExtension) cues.push({ text: "Reach all the way up — hands overhead.", level: P.INFO });
+        }
+      }
+    }
+    return { phase: this.state === "open" ? "Open" : "Closed", repDone, repScore, cues };
+  }
+}
+
+class HighKneesAnalyzer {
+  constructor() { this.reset(); }
+  reset() { this.lastLeg = null; this.up = false; }
+  update(lm) {
+    if (vis(lm, LM.L_KNEE, LM.R_KNEE, LM.L_HIP, LM.R_HIP) < 0.5) {
+      return { phase: "—", repDone: false, repScore: null, cues: [{ text: "Step back — I need your hips and knees in frame.", level: P.INFO }] };
+    }
+    const lift = 0.03; // knee meaningfully above hip line
+    const leftUp = lm[LM.L_KNEE].y < lm[LM.L_HIP].y - lift;
+    const rightUp = lm[LM.R_KNEE].y < lm[LM.R_HIP].y - lift;
+    const cues = [];
+    let repDone = false, repScore = null;
+
+    if (!this.up && (leftUp || rightUp)) {
+      const leg = leftUp ? "L" : "R";
+      this.up = true;
+      if (leg !== this.lastLeg) { // alternation = a real running stride
+        this.lastLeg = leg;
+        repDone = true;
+        repScore = 100;
+      }
+    } else if (this.up && !leftUp && !rightUp) {
+      this.up = false;
+    }
+    return { phase: this.up ? "Drive" : "Ready", repDone, repScore, cues };
+  }
+}
+
 export const EXERCISES = {
   squat:  { name: "Squat",         repNoun: "Reps",  make: () => new SquatAnalyzer() },
   pushup: { name: "Push-up",       repNoun: "Reps",  make: () => new PushupAnalyzer() },
   curl:   { name: "Bicep curl",    repNoun: "Reps",  make: () => new CurlAnalyzer() },
   jump:   { name: "Vertical jump", repNoun: "Jumps", make: (getH) => new JumpAnalyzer(getH) },
+  jacks:  { name: "Jumping jacks", repNoun: "Reps",  make: () => new JumpingJackAnalyzer() },
+  knees:  { name: "High knees",    repNoun: "Steps", make: () => new HighKneesAnalyzer() },
 };
 
 export const PRIORITY = P;
