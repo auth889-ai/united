@@ -1,9 +1,9 @@
-import { EXERCISES, PRIORITY } from "./exercises.js";
-import { speak, speakRep, setVoice, summarize, coachReply, getLLMConfig, setLLMConfig } from "./coach.js";
-import { renderChart, renderTable } from "./chart.js";
-import { voiceControlSupported, startVoiceControl, stopVoiceControl } from "./voice.js";
-import { requestReport } from "./report.js";
-import { downloadShareCard } from "./share.js";
+import { EXERCISES, PRIORITY } from "./engine/exercises.js";
+import { speak, speakRep, setVoice, summarize, coachReply, getLLMConfig, setLLMConfig } from "./services/coach.js";
+import { renderChart, renderTable } from "./ui/chart.js";
+import { voiceControlSupported, startVoiceControl, stopVoiceControl } from "./services/voice.js";
+import { requestReport } from "./ui/report.js";
+import { downloadShareCard } from "./ui/share.js";
 import {
   PoseLandmarker, FilesetResolver, DrawingUtils,
 } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";

@@ -100,18 +100,19 @@ Pydantic-validated structured outputs) · SQLite.
 frontend/                       static web app (auto-deployed to GitHub Pages by CI)
   index.html                    app shell + landing
   manifest.json · sw.js         installable PWA + offline service worker
-  assets/
-    icon.svg                    app icon
+  assets/icon.svg               app icon
   src/
-    styles/main.css             dark athletic design system
-    js/
-      app.js                    camera, inference loop, session lifecycle, UI
-      exercises.js              angle math + per-exercise analyzers (biomechanics engine)
+    app.js                      entry point — camera, inference loop, session lifecycle
+    engine/
+      exercises.js              biomechanics core: joint-angle math + rep state machines
+    services/
       coach.js                  voice cues, session summaries, chat coach (+ optional LLM)
       voice.js                  hands-free voice control (speech recognition grammar)
+    ui/
       report.js                 multi-agent AI coaching report (radar chart)
       chart.js                  progress chart (tooltips, table view, direct labels)
       share.js                  downloadable session share card (canvas PNG)
+    styles/main.css             dark athletic design system
 backend/                        multi-agent coaching API
   main.py                       FastAPI — 4 parallel AI agents + SQLite
   requirements.txt
