@@ -46,9 +46,11 @@ Built solo in under 48 hours for **United Hacks V7** (Sports track).
   is scored against the same faults a physio checks (depth, body line, elbow drift, torso lean)
 - **Voice coaching** — the highest-priority fault is spoken via the Web Speech API, so you
   never look at the screen mid-set
-- **Hands-free voice control** — say "squats", "start", "how am I doing", "finish" and the
-  app obeys. It talks *and* listens, making it the first workout coach that **blind and
-  low-vision athletes can use entirely eyes-free** (Chrome/Edge)
+- **Hands-free voice control AND conversation** — say "squats", "start", "finish" and the
+  app obeys; ask it anything else ("what should I fix first?", "give me a plan") and the
+  coach **answers out loud**. A full voice-in/voice-out coaching conversation, making it
+  the first workout coach that **blind and low-vision athletes can use entirely eyes-free**
+  (Chrome/Edge)
 - **Progress tracking** — per-session form scores charted over time (with an accessible table view)
 - **AI coach chat** — a built-in rules coach that knows your session stats, with optional
   bring-your-own-key support for any OpenAI-compatible LLM (e.g. Featherless AI)

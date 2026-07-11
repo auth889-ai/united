@@ -40,9 +40,11 @@ FormCoach AI watches you train and coaches you in real time:
   using your height.
 - **Tracks progress** with a per-session form-score chart (plus an accessible
   table view) stored locally.
-- **Listens as well as talks.** Full hands-free voice control — "squats", "start",
-  "how am I doing", "finish" — makes FormCoach the first workout coach that **blind
-  and low-vision athletes can use entirely eyes-free**.
+- **A real conversation, hands-free.** Commands ("squats", "start", "finish") are
+  obeyed instantly — and anything else you say is answered out loud by the AI coach:
+  "what should I fix first?" mid-set gets a spoken answer from your own session data.
+  Voice in, voice out — the first workout coach **blind and low-vision athletes can
+  use entirely eyes-free**.
 - **Guided workouts, run by voice.** Pick sets × reps; the coach counts you through
   every set, calls rest with a countdown, and announces the next set — a complete
   training product, not a detector.

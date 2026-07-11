@@ -644,7 +644,7 @@ function selectExercise(key) {
   document.querySelector(`.ex-card[data-ex="${key}"]`)?.click();
 }
 
-function handleIntent(intent) {
+function handleIntent(intent, text) {
   switch (intent) {
     case "start":
       if (!state.cameraOn && !state.demo) { speak("Enable the camera first.", { force: true }); return; }
@@ -666,8 +666,21 @@ function handleIntent(intent) {
       break;
     }
     case "help":
-      speak("You can say: squats, push ups, curls, or jump to pick a drill. Start. Stop. Or, how am I doing.", { force: true });
+      speak("You can say: squats, push ups, curls, or jump to pick a drill. Start. Stop. How am I doing. Or just ask me anything — I'll answer.", { force: true });
       break;
+    case "chat": {
+      // Full hands-free conversation: any non-command speech goes to the
+      // AI coach and the answer is spoken back.
+      addMsg(text, "user");
+      const pending = addMsg("thinking…", "coach");
+      pending.classList.add("thinking");
+      coachReply(text, mySessions()).then((reply) => {
+        pending.classList.remove("thinking");
+        pending.textContent = reply;
+        speak(reply, { force: true });
+      });
+      break;
+    }
     case "mic-denied":
       $("micToggle").setAttribute("aria-pressed", "false");
       $("micToggle").textContent = "🎤 Mic blocked";

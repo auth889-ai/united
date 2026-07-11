@@ -31,9 +31,11 @@ export function startVoiceControl(onIntent) {
   rec.onresult = (e) => {
     // Ignore the mic while the coach is speaking, or it hears itself.
     if (speechSynthesis.speaking) return;
-    const text = e.results[e.results.length - 1][0].transcript.toLowerCase();
+    const text = e.results[e.results.length - 1][0].transcript.toLowerCase().trim();
     const hit = COMMANDS.find((c) => c.re.test(text));
     if (hit) onIntent(hit.intent, text);
+    // Not a command? It's a question — have a conversation with the coach.
+    else if (text.length > 8) onIntent("chat", text);
   };
   // Recognition times out after silence — keep it alive while enabled.
   rec.onend = () => { if (active) { try { rec.start(); } catch { /* already starting */ } } };
