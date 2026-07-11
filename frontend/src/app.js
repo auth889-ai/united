@@ -107,6 +107,25 @@ async function analyzeVideoFile(file) {
   }
 }
 
+// Analyze anything on your screen — point it at a YouTube tab and FormCoach
+// coaches the athlete in the video live, while it plays.
+async function analyzeScreen() {
+  $("stageMsg").innerHTML = "<p>Loading pose model…</p>";
+  try {
+    await loadModel();
+    const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+    video.srcObject = stream;
+    document.querySelector(".stage").classList.add("file-mode"); // screen content isn't a selfie
+    await startTracking();
+    setCue("Screen connected — play the athlete's video and press Start session.", "good");
+    stream.getVideoTracks()[0].addEventListener("ended", () => location.reload());
+  } catch (err) {
+    $("stageMsg").innerHTML = `<p>⚠ Screen capture ${err.name === "NotAllowedError" ? "was declined" : "failed: " + err.message}.</p>
+       <button id="btnCamera" class="btn btn-primary">Enable camera instead</button>`;
+    $("btnCamera").onclick = enableCamera;
+  }
+}
+
 const drawer = () => new DrawingUtils(ctx);
 let drawingUtils = null;
 const smoother = createSmoother();
@@ -605,6 +624,7 @@ $("btnCamera").onclick = () => { state.demo = false; enableCamera(); };
 $("btnDemo").onclick = startDemo;
 $("btnGuided").onclick = () => { if (!state.running) startGuidedWorkout(); };
 $("btnVideo").onclick = () => $("videoFile").click();
+$("btnScreen").onclick = () => { state.demo = false; analyzeScreen(); };
 $("videoFile").addEventListener("change", (e) => {
   const file = e.target.files?.[0];
   if (file) { state.demo = false; analyzeVideoFile(file); }

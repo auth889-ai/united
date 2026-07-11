@@ -30,8 +30,9 @@ Built solo in under 24 hours for **United Hacks V7** (Sports track).
   drawn on the athlete in real time
 - **👻 Ghost rep** — your best-scoring rep replays as a translucent skeleton over you,
   so every rep races your own best form
-- **📼 Analyze ANY video** — upload your own recording, a training clip, or downloaded
-  footage of a pro athlete; the same engine overlays the skeleton and scores the form
+- **📼 Analyze ANY video** — upload a recording, or **capture your screen** and point it
+  at a playing YouTube video: the engine overlays the skeleton and coaches the athlete
+  in the video live
 - **▶ Demo mode — no camera needed**: a synthetic athlete performs squats (including
   deliberately bad reps) through the same biomechanics engine, so judges and visitors
   see the AI coaching live in 5 seconds
