@@ -491,6 +491,24 @@ function finishSession() {
     showSummary(session);
     const note = summarize(session);
     speak(note, { force: true });
+    // Event-driven AI debrief: the LLM reacts to the finished workout and
+    // speaks a personalized close-out once the stats readout ends.
+    liveCoachLine({
+      event: "workout_complete",
+      exercise: session.exercise,
+      reps: session.reps,
+      averageFormScore: session.avgScore,
+      topFaults: Object.keys(session.faults).slice(0, 2),
+      bestJumpCm: session.bestJumpCm || undefined,
+    }).then((line) => {
+      if (!line) return;
+      let tries = 0;
+      const sayWhenQuiet = () => {
+        if (!speechSynthesis.speaking) speak(line, { force: true });
+        else if (++tries < 8) setTimeout(sayWhenQuiet, 1500);
+      };
+      sayWhenQuiet();
+    });
     if (localOnly()) {
       document.getElementById("report").classList.add("hidden");
     } else {
