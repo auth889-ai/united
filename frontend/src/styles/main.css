@@ -441,3 +441,17 @@ button { font: inherit; cursor: pointer; }
 /* ---------- app tabs ---------- */
 .tab-hidden { display: none !important; }
 .topnav a.active { color: var(--accent); font-weight: 700; }
+
+/* ---------- typographic statement band ---------- */
+.statement {
+  max-width: var(--maxw); margin: 0 auto; padding: 4.5rem 1.4rem;
+  text-align: center;
+}
+.statement-big {
+  font-family: "Space Grotesk", system-ui, sans-serif;
+  font-size: clamp(2.6rem, 8vw, 5.2rem); font-weight: 700;
+  line-height: 1.02; letter-spacing: -0.03em; color: var(--ink);
+}
+.statement-sub {
+  color: var(--ink-muted); margin: 1.1rem auto 1.6rem; max-width: 34rem;
+}
