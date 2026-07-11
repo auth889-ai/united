@@ -26,26 +26,27 @@ keep it in.
 > caving in — the number one ACL risk — and even notices when fatigue is
 > degrading my form and tells me to rest BEFORE I get hurt."
 
-## 0:40–1:25 — Core demo (Scene B, unedited if possible)
+## 0:40–1:40 — THE MOVEMENT TWIN (the core — one continuous take)
 
-1. **Squats (20s):** 3 good reps — reps count, score ring fills, live knee
-   angles float on your joints. *"Those angle readouts are broadcast-style
-   telestration — computed from 33 body landmarks, 30 times a second,
-   entirely on my device."*
-2. **Ghost rep (10s):** point at the translucent skeleton. *"And that ghost?
-   That's my own best rep, replaying — every rep races my best form."*
-3. **Voice conversation (15s):** while still standing there, say out loud:
-   **"Coach, what should I fix first?"** — let the room hear the spoken answer.
-   *"I never touched the screen. It talks AND listens — a blind athlete can run
-   an entire session eyes-free."*
+This sequence IS the pitch. Bad rep, measured correction, improved rep:
 
-## 1:25–1:50 — Guided workout + jump test (Scene B)
+1. **One perfect squat.** The coach says "Personal best captured." Say:
+   "It just learned MY best rep — that ghost skeleton is me, at my best,
+   and it's now my baseline."
+2. **One deliberately bad squat** (shallow, lean forward). The app speaks a
+   MEASURED deviation: "Depth 12 degrees short of your best rep." Say:
+   "Not a generic tip — a measurement. Against ME, not a fixed threshold."
+3. **Correct it.** Do the squat right — score climbs back. Say: "Bad rep,
+   exact correction, better rep. That's the loop that builds athletes."
+4. **Voice question (10s):** say "Coach, what should I fix first?" — let the
+   room hear the answer. "Never touched the screen. Voice in, voice out —
+   designed for fully eyes-free training." 
 
-- Say **"switch to squats… start"** by voice, or click 🏁 Guided workout:
-  *"It runs whole workouts by voice — counts my sets, calls my rest periods."*
-  Show 2–3 reps + the rest countdown kicking in.
-- Quick vertical jump: *"No force plates — it measures my jump in centimetres
-  by calibrating against my own body."*
+## 1:40–2:00 — Fast montage (Scene B, quick cuts, one line each)
+
+- Guided workout: rest countdown on screen — "it runs whole workouts by voice"
+- Vertical jump: "basketball's scouting test, in centimetres, no equipment"
+- Keep it to one breath — the Twin is the star, this is the supporting cast.
 
 ## 1:50–2:15 — The YouTube moment (Scene A)
 
@@ -57,24 +58,22 @@ Start session:
 > angles, rep counting, on an athlete who isn't even here. Any footage on
 > Earth becomes coachable."
 
-## 2:15–2:45 — Privacy, accounts, and the AI report (Scene A)
+## 2:15–2:40 — Privacy proof + AI report (Scene A, tight)
 
-1. Point at the Privacy HUD: *"Here's my favorite part: 14,000 frames analyzed,
-   ZERO video bytes uploaded — you can verify it in DevTools. Privacy isn't a
-   policy here, it's the architecture."*
-2. Flash the sign-in screen: *"Accounts with no server: my history is AES-256
-   encrypted with a key from my password. There is no database to breach."*
-3. Finish the session → agent report renders: *"Four AI agents analyze every
-   session in parallel — biomechanics, injury risk, programming, progress —
-   and every verdict shows its reasoning."* Show the radar chart, then one
-   glance at the coach dashboard: *"and a coach can watch a whole team."*
+1. Privacy HUD: "14,000 frames analyzed, ZERO video bytes uploaded — check
+   DevTools yourself. It learns my best rep without my video ever leaving
+   this laptop."
+2. Finish session → agent report + radar chart: "Four AI agents — running on
+   a local language model through Ollama — write the readiness report."
+   One glance only. Encryption, dashboard, PWA, tests: leave them in the
+   write-up for judges who want depth — don't tour them on camera.
 
 ## 2:45–3:05 — Close (Scene B, face to camera)
 
-> "Real-time computer vision, a biomechanics engine, voice in and out,
-> encrypted accounts, 33 automated tests, deployed live — built solo in one
-> weekend for United Hacks. FormCoach AI: every athlete deserves a coach.
-> Now everyone has one. I really love this project — I hope you do too."
+> "It learns my best rep and coaches me against myself — without my video
+> ever leaving my laptop. Built solo in one weekend for United Hacks.
+> FormCoach AI: every athlete deserves a coach. Now everyone has one.
+> I really love this project — I hope you do too."
 
 ---
 
