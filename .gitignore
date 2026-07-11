@@ -1,3 +1,5 @@
 __pycache__/
 backend/formcoach.db
 .DS_Store
+
+tests/
