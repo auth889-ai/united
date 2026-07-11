@@ -424,6 +424,7 @@ function frameSnapshot() {
 }
 
 function captureFaultShot(label) {
+  if (eyesModel) eyesTick(true); // Live Coach: look at this mistake right now
   if (state.faultShots.length >= 12) return; // enough evidence, not a film reel
   state.faultShots.push({
     at: Math.round((performance.now() - state.sessionStart) / 1000),
@@ -938,12 +939,16 @@ $("bargeToggle").onclick = () => {
    talk back — a real two-way conversation, all on-device.
    Mode 1 (default) stays pure physics + post-session analysis. */
 let eyesModel = null, eyesTimer = null;
-async function eyesTick() {
-  if (!state.running || !eyesModel || speechSynthesis.speaking) return;
+async function eyesTick(faultTriggered = false) {
+  if (!state.running || !eyesModel) return;
+  if (!faultTriggered && speechSynthesis.speaking) return;
+  // fault-triggered looks snapshot the mistake IMMEDIATELY (while the instant
+  // physics cue is still talking) so the vision comment lands ~4s after the error
   const line = await liveVisionLine(frameSnapshot(), eyesModel, state.exercise);
-  if (line && state.running && !speechSynthesis.speaking) {
+  if (line && state.running) {
     setCue(`👁 ${line}`, "info");
-    speak(line, { force: true });
+    if (speechSynthesis.speaking) speakQueued(line);
+    else speak(line, { force: true });
   }
 }
 $("eyesToggle").onclick = async () => {
