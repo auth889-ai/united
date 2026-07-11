@@ -389,3 +389,6 @@ button { font: inherit; cursor: pointer; }
   background: var(--surface); color: var(--ink);
   border: 1px solid var(--border); border-radius: 8px; padding: 0.35rem 0.5rem;
 }
+
+/* ---------- auth ---------- */
+.auth-error { color: var(--critical); font-size: 0.82rem; min-height: 1.2em; margin: -0.3rem 0 0.5rem; }

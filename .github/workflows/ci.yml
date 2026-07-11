@@ -24,3 +24,4 @@ jobs:
         with:
           node-version: "22"
       - run: node frontend/tests/engine.test.mjs
+      - run: node frontend/tests/auth.test.mjs

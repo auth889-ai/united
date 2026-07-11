@@ -242,13 +242,23 @@
   <!-- ============ ATHLETE SIGN-IN ============ -->
   <dialog id="welcomeModal" class="modal">
     <h3>👤 Athlete sign-in</h3>
-    <p class="modal-sub">Profiles are local to this device — no account, no password, no server.
-      Each athlete gets their own history, streaks, and coaching. Your data stays yours.</p>
-    <label>Your name
-      <input id="welcomeName" type="text" placeholder="e.g. Jannatul" autocomplete="off" />
+    <p class="modal-sub">Your password never leaves this device, and your training history is
+      <strong>AES-256 encrypted</strong> with a key derived from it — nobody else on this
+      machine (or anywhere) can read your data. No server, no account database.</p>
+    <label>Email
+      <input id="authEmail" type="email" placeholder="you@example.com" autocomplete="username" />
     </label>
+    <label>Password
+      <input id="authPass" type="password" placeholder="min 6 characters" autocomplete="current-password" />
+    </label>
+    <p id="authError" class="auth-error"></p>
     <div class="modal-actions">
-      <button id="welcomeGo" class="btn btn-primary">Start training →</button>
+      <button id="authGuest" class="btn btn-ghost" type="button">Continue as guest</button>
+      <button id="authRegister" class="btn btn-ghost" type="button">Create account</button>
+      <button id="authSignIn" class="btn btn-primary" type="button">Sign in →</button>
+    </div>
+    <div class="modal-actions" id="authSignedInRow" hidden>
+      <button id="authSignOut" class="btn btn-ghost" type="button">Sign out</button>
     </div>
   </dialog>
 

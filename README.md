@@ -19,9 +19,11 @@ Built solo in under 24 hours for **United Hacks V7** (Sports track).
   the next set
 - **🧑‍🏫 Coach Team Dashboard** — one backend serves a whole squad: every athlete's
   sessions, form trends, and injury-risk flags in one view (`http://localhost:8001/dashboard?key=coach-demo` — token-gated; set `COACH_KEY` env to change it)
-- **👤 Athlete sign-in (local profiles)** — a real sign-in screen, but passwordless by
-  design: profiles live on the device, so a family or a whole gym can share one machine
-  with separate histories — and there is no account database to breach
+- **👤 Zero-knowledge accounts** — email + password sign-in where the password never
+  leaves the device and each user's history is **AES-256-GCM encrypted at rest** with a
+  key derived from her password (PBKDF2, 150k iterations). On a shared machine, another
+  user — or anyone reading localStorage — sees only ciphertext. No server, no account
+  database, nothing to breach
 - **🔒 Live privacy proof** — an on-screen counter of frames analyzed on-device vs
   video bytes uploaded (always 0), plus a local-only mode that sends nothing at all
 - **📐 Live telestration** — broadcast-style joint-angle readouts (knee/elbow degrees)
@@ -153,8 +155,9 @@ backend/                        multi-agent coaching API (layered FastAPI packag
 ## ✅ Tests
 
 ```bash
-pytest backend/tests -v              # 5 API tests
+pytest backend/tests -v              # 8 API tests
 node frontend/tests/engine.test.mjs  # 7 biomechanics engine tests
+node frontend/tests/auth.test.mjs    # 12 zero-knowledge auth tests
 ```
 
 Both suites run automatically in CI on every push.

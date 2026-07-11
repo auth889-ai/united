@@ -49,9 +49,11 @@ FormCoach AI watches you train and coaches you in real time:
 - **A coach dashboard for whole teams — token-gated.** One backend serves a squad: each athlete
   trains privately in their own browser, and the coach sees sessions, form trends,
   and injury-risk flags in one view, behind a coach access key. Athletes need no accounts at all — their history lives only in their own browser, so there is no user database to breach. That's how it scales in the real world.
-- **Sign-in without surveillance.** A real athlete sign-in screen with per-athlete
-  history, streaks, and coaching — but no passwords and no user database, because
-  profiles never leave the device. Identity without data collection.
+- **Zero-knowledge accounts.** Email + password sign-in — but the password never
+  leaves the device, and each user's training history is AES-256-GCM encrypted at
+  rest with a key derived from her password (PBKDF2, 150k iterations, WebCrypto).
+  One user cryptographically cannot read another's data, and there is no server-side
+  account database to breach. Login without surveillance.
 - **Privacy you can watch.** A live on-screen counter: frames analyzed on-device vs
   video bytes uploaded (always zero) — judges can verify in DevTools. Local-only
   mode sends nothing at all.

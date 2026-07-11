@@ -5,6 +5,7 @@ import { voiceControlSupported, startVoiceControl, stopVoiceControl } from "./se
 import { requestReport } from "./ui/report.js";
 import { downloadShareCard } from "./ui/share.js";
 import { demoPose } from "./engine/demo.js";
+import { register, signIn, signOut, resume, currentUser, loadVault, saveVault } from "./services/auth.js";
 import {
   PoseLandmarker, FilesetResolver, DrawingUtils,
 } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
@@ -388,9 +389,8 @@ function finishSession() {
     bestJumpCm: state.analyzer.bestJumpCm || 0,
   };
   if (state.reps > 0) {
-    const all = loadSessions();
-    all.push(session);
-    localStorage.setItem("formcoach.sessions", JSON.stringify(all));
+    sessionsCache.push(session);
+    saveVault(sessionsCache).catch(() => {});
     refreshProgress();
     showSummary(session);
     const note = summarize(session);
@@ -438,34 +438,69 @@ function showSummary(s) {
 
 /* ================= progress ================= */
 
+// In-memory session store — the signed-in user's decrypted vault, or the
+// guest legacy store. All reads go through this cache; writes re-encrypt.
+let sessionsCache = [];
+
 function loadSessions() {
-  try { return JSON.parse(localStorage.getItem("formcoach.sessions")) || []; } catch { return []; }
+  return sessionsCache;
 }
 
-/* ---------- athlete profiles: local sign-in, per-athlete history ---------- */
+/* ---------- accounts: email+password, per-user encrypted history ---------- */
 
-const athleteName = () => localStorage.getItem("formcoach.athlete") || "";
+const athleteName = () =>
+  currentUser()?.split("@")[0] || localStorage.getItem("formcoach.athlete") || "";
 
-// Sessions belonging to the signed-in athlete (legacy sessions count as theirs).
+// Signed-in users' vaults are already theirs alone; guests filter legacy data.
 const mySessions = () =>
-  loadSessions().filter((s) => !s.athlete || s.athlete === athleteName());
+  currentUser() ? sessionsCache : sessionsCache.filter((s) => !s.athlete || s.athlete === athleteName());
 
 function setAthlete(name) {
   localStorage.setItem("formcoach.athlete", name);
-  $("profileChip").textContent = "👤 " + name;
+  updateProfileChip();
   refreshProgress();
 }
 
-$("welcomeGo").onclick = () => {
-  setAthlete($("welcomeName").value.trim() || "Athlete");
+function updateProfileChip() {
+  $("profileChip").textContent = "👤 " + (currentUser() || athleteName() || "Sign in");
+  $("authSignedInRow").hidden = !currentUser();
+}
+
+async function afterAuthChange() {
+  sessionsCache = await loadVault();
+  updateProfileChip();
+  refreshProgress();
+}
+
+async function tryAuth(fn) {
+  $("authError").textContent = "";
+  try {
+    await fn($("authEmail").value, $("authPass").value);
+    $("authPass").value = "";
+    $("welcomeModal").close();
+    await afterAuthChange();
+    speak(`Signed in. Welcome, ${athleteName()}!`, { force: true });
+  } catch (err) {
+    $("authError").textContent = err.message;
+  }
+}
+
+$("authSignIn").onclick = () => tryAuth(signIn);
+$("authRegister").onclick = () => tryAuth(register);
+$("authGuest").onclick = () => {
+  if (!localStorage.getItem("formcoach.athlete")) localStorage.setItem("formcoach.athlete", "Guest");
   $("welcomeModal").close();
+  afterAuthChange();
+};
+$("authSignOut").onclick = async () => {
+  signOut();
+  $("welcomeModal").close();
+  await afterAuthChange();
 };
 $("profileChip").onclick = () => {
-  $("welcomeName").value = athleteName();
+  $("authEmail").value = currentUser() || "";
   $("welcomeModal").showModal();
 };
-if (!athleteName()) $("welcomeModal").showModal();
-else $("profileChip").textContent = "👤 " + athleteName();
 
 // Gamification: training streak + personal records from local history.
 function renderStreaks(sessions) {
@@ -654,7 +689,15 @@ $("tableToggle").onclick = () => {
   $("tableToggle").setAttribute("aria-pressed", showTable);
 };
 
-refreshProgress();
+// Boot: restore the tab's signed-in user (if any), decrypt their vault,
+// then render. First-time visitors get the sign-in screen.
+(async () => {
+  await resume();
+  await afterAuthChange();
+  if (!currentUser() && !localStorage.getItem("formcoach.athlete")) {
+    $("welcomeModal").showModal();
+  }
+})();
 
 // Installable PWA: relative path so it works at both / and /united/ (GitHub Pages)
 if ("serviceWorker" in navigator) {
