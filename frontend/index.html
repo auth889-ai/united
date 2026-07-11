@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="src/styles/main.css" />
 </head>
 <body>
 
@@ -152,6 +152,7 @@
     <div id="summaryCards" class="summary-cards"></div>
     <div id="repStrip" class="rep-strip" aria-label="Per-rep quality scores"></div>
     <p id="summaryCoach" class="coach-note"></p>
+    <button id="btnShare" class="btn btn-ghost" style="margin-top:0.8rem">⬇ Download share card</button>
   </section>
 
   <!-- ============ MULTI-AGENT REPORT ============ -->
@@ -165,6 +166,7 @@
   <section id="progress" class="progress">
     <h2 class="section-title">Progress</h2>
     <p class="section-sub">Average form score per session, stored locally on your device.</p>
+    <div id="streakTiles" class="summary-cards" style="margin-bottom:1rem"></div>
     <div class="viz-root">
       <div class="viz-head">
         <h3>Form score by session</h3>
@@ -226,6 +228,6 @@
     </div>
   </dialog>
 
-  <script type="module" src="js/app.js"></script>
+  <script type="module" src="src/js/app.js"></script>
 </body>
 </html>

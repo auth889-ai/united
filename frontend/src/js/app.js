@@ -3,6 +3,7 @@ import { speak, speakRep, setVoice, summarize, coachReply, getLLMConfig, setLLMC
 import { renderChart, renderTable } from "./chart.js";
 import { voiceControlSupported, startVoiceControl, stopVoiceControl } from "./voice.js";
 import { requestReport } from "./report.js";
+import { downloadShareCard } from "./share.js";
 import {
   PoseLandmarker, FilesetResolver, DrawingUtils,
 } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
@@ -196,7 +197,11 @@ function finishSession() {
   }
 }
 
+let lastSession = null;
+$("btnShare").onclick = () => lastSession && downloadShareCard(lastSession);
+
 function showSummary(s) {
+  lastSession = s;
   $("summary").classList.remove("hidden");
   const cards = [
     { v: s.reps, l: s.exercise === "Vertical jump" ? "jumps" : "reps" },
@@ -229,9 +234,35 @@ function loadSessions() {
   try { return JSON.parse(localStorage.getItem("formcoach.sessions")) || []; } catch { return []; }
 }
 
+// Gamification: training streak + personal records from local history.
+function renderStreaks(sessions) {
+  const el = $("streakTiles");
+  if (!sessions.length) { el.innerHTML = ""; return; }
+  const days = new Set(sessions.map((s) => s.date.slice(0, 10)));
+  let streak = 0;
+  for (let i = 0; ; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    if (days.has(key)) streak++;
+    else if (i === 0) continue; // no session yet today — streak can still be alive
+    else break;
+  }
+  const tiles = [
+    { v: `${streak} 🔥`, l: "day streak" },
+    { v: sessions.length, l: "total sessions" },
+    { v: Math.max(...sessions.map((s) => s.avgScore)), l: "best form score" },
+  ];
+  const bestJump = Math.max(...sessions.map((s) => s.bestJumpCm || 0));
+  if (bestJump) tiles.push({ v: bestJump + " cm", l: "jump PR" });
+  el.innerHTML = tiles
+    .map((t) => `<div class="sum-card"><b>${t.v}</b><span>${t.l}</span></div>`).join("");
+}
+
 function refreshProgress() {
   const sessions = loadSessions();
   $("chartEmpty").classList.toggle("hidden", sessions.length > 0);
+  renderStreaks(sessions);
   renderChart($("chart"), sessions);
   renderTable($("chartTable"), sessions);
 }
