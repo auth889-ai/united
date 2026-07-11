@@ -97,20 +97,25 @@ Pydantic-validated structured outputs) · SQLite.
 ## 📁 Structure
 
 ```
-frontend/                     static web app (deployed to GitHub Pages by CI)
-  index.html                  app shell + landing
-  manifest.json · sw.js       installable PWA + offline service worker
-  css/style.css               dark athletic design system
-  js/app.js                   camera, inference loop, session lifecycle, UI
-  js/exercises.js             angle math + per-exercise analyzers (biomechanics engine)
-  js/coach.js                 voice cues, session summaries, chat coach (+ optional LLM)
-  js/voice.js                 hands-free voice control (speech recognition grammar)
-  js/report.js                multi-agent AI coaching report (radar chart)
-  js/chart.js                 progress chart (tooltips, table view, direct labels)
-backend/                      multi-agent coaching API
-  main.py                     FastAPI — 4 parallel AI agents + SQLite
+frontend/                       static web app (auto-deployed to GitHub Pages by CI)
+  index.html                    app shell + landing
+  manifest.json · sw.js         installable PWA + offline service worker
+  assets/
+    icon.svg                    app icon
+  src/
+    styles/main.css             dark athletic design system
+    js/
+      app.js                    camera, inference loop, session lifecycle, UI
+      exercises.js              angle math + per-exercise analyzers (biomechanics engine)
+      coach.js                  voice cues, session summaries, chat coach (+ optional LLM)
+      voice.js                  hands-free voice control (speech recognition grammar)
+      report.js                 multi-agent AI coaching report (radar chart)
+      chart.js                  progress chart (tooltips, table view, direct labels)
+      share.js                  downloadable session share card (canvas PNG)
+backend/                        multi-agent coaching API
+  main.py                       FastAPI — 4 parallel AI agents + SQLite
   requirements.txt
-.github/workflows/deploy.yml  CI/CD — auto-deploys frontend to GitHub Pages on push
+.github/workflows/deploy.yml    CI/CD — deploys frontend/ to GitHub Pages on every push
 ```
 
 ## ⚖️ License & credits
