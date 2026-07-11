@@ -1,5 +1,5 @@
 import { EXERCISES, PRIORITY, LM, angle } from "./engine/exercises.js";
-import { speak, speakRep, setVoice, summarize, coachReply, liveCoachLine, getLLMConfig, setLLMConfig } from "./services/coach.js";
+import { speak, speakRep, speakQueued, setVoice, summarize, coachReply, coachReplyStream, liveCoachLine, getLLMConfig, setLLMConfig } from "./services/coach.js";
 import { renderChart, renderTable } from "./ui/chart.js";
 import { voiceControlSupported, startVoiceControl, stopVoiceControl } from "./services/voice.js";
 import { requestReport } from "./ui/report.js";
@@ -669,9 +669,12 @@ $("chatForm").addEventListener("submit", async (e) => {
   addMsg(q, "user");
   const pending = addMsg("thinking…", "coach");
   pending.classList.add("thinking");
-  const reply = await coachReply(q, mySessions());
-  pending.classList.remove("thinking");
-  pending.textContent = reply.text;
+  let first = true;
+  const reply = await coachReplyStream(q, mySessions(), (sentence) => {
+    if (first) { pending.classList.remove("thinking"); pending.textContent = ""; first = false; }
+    pending.textContent += (pending.textContent ? " " : "") + sentence;
+  });
+  if (first) { pending.classList.remove("thinking"); pending.textContent = reply.text; }
   const tag = document.createElement("span");
   tag.className = "msg-engine";
   tag.textContent = reply.engine;
@@ -766,19 +769,23 @@ function handleIntent(intent, text) {
       speak("You can say: squats, push ups, curls, or jump to pick a drill. Start. Stop. How am I doing. Or just ask me anything — I'll answer.", { force: true });
       break;
     case "chat": {
-      // Full hands-free conversation: any non-command speech goes to the
-      // AI coach and the answer is spoken back.
+      // Full hands-free conversation, streamed: the coach starts SPEAKING the
+      // first sentence while the rest of the answer is still generating.
       addMsg(text, "user");
-      const pending = addMsg("thinking…", "coach");
+      const pending = addMsg("", "coach");
       pending.classList.add("thinking");
-      coachReply(text, mySessions()).then((reply) => {
-        pending.classList.remove("thinking");
-        pending.textContent = reply.text;
+      pending.textContent = "thinking…";
+      let first = true;
+      coachReplyStream(text, mySessions(), (sentence) => {
+        if (first) { pending.classList.remove("thinking"); pending.textContent = ""; first = false; }
+        pending.textContent += (pending.textContent ? " " : "") + sentence;
+        speakQueued(sentence);
+      }).then((reply) => {
+        if (first) { pending.classList.remove("thinking"); pending.textContent = reply.text; speak(reply.text, { force: true }); }
         const tag = document.createElement("span");
         tag.className = "msg-engine";
         tag.textContent = reply.engine;
         pending.appendChild(tag);
-        speak(reply.text, { force: true });
       });
       break;
     }
@@ -859,6 +866,12 @@ function showTab(name) {
 
 window.addEventListener("hashchange", () => showTab(location.hash.slice(1)));
 showTab(location.hash.slice(1) || "train");
+
+// Never keep talking after the athlete leaves the page.
+window.addEventListener("pagehide", () => speechSynthesis.cancel());
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) speechSynthesis.cancel();
+});
 
 // Installable PWA: relative path so it works at both / and /united/ (GitHub Pages)
 if ("serviceWorker" in navigator) {

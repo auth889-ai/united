@@ -154,3 +154,84 @@ export async function liveCoachLine(snapshot) {
     liveBusy = false;
   }
 }
+
+// Queue speech without cancelling what's already being said —
+// used for streamed sentences so they flow naturally.
+export function speakQueued(text) {
+  if (!("speechSynthesis" in window)) return;
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = 1.05;
+  speechSynthesis.speak(u);
+}
+
+// Streaming reply: sentences are delivered (and can be spoken) AS the model
+// generates them — first words in ~1s instead of waiting for the full answer.
+export async function coachReplyStream(question, history, onSentence) {
+  const cfg = getLLMConfig();
+  let endpoint, model, key;
+  if (cfg.endpoint && cfg.model) ({ endpoint, model, key } = cfg);
+  else if (await detectOllama()) {
+    endpoint = "http://localhost:11434/v1/chat/completions";
+    model = "llama3.2";
+    key = "";
+  } else {
+    return { text: OFFLINE_MSG, engine: "offline" };
+  }
+
+  const stats = history.slice(-5);
+  const headers = { "Content-Type": "application/json" };
+  if (key) headers.Authorization = `Bearer ${key}`;
+  try {
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        model,
+        stream: true,
+        max_tokens: 220,
+        messages: [
+          { role: "system", content:
+            "You are FormCoach, a concise, encouraging sports form coach inside a webcam training app. " +
+            "The user's recent session stats (JSON): " + JSON.stringify(stats) +
+            ". Answer in under 80 words. Never invent stats not in the JSON." },
+          { role: "user", content: question },
+        ],
+      }),
+    });
+    if (!res.ok) throw new Error(`LLM ${res.status}`);
+
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let buf = "", full = "", pending = "";
+    const flush = (force = false) => {
+      // emit complete sentences as they land
+      let m;
+      while ((m = pending.match(/^[\s\S]*?[.!?](\s|$)/))) {
+        const sentence = m[0].trim();
+        pending = pending.slice(m[0].length);
+        if (sentence.length > 1) onSentence(sentence);
+      }
+      if (force && pending.trim().length > 1) { onSentence(pending.trim()); pending = ""; }
+    };
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const lines = buf.split("\n");
+      buf = lines.pop(); // keep partial line
+      for (const line of lines) {
+        if (!line.startsWith("data: ") || line.includes("[DONE]")) continue;
+        try {
+          const delta = JSON.parse(line.slice(6)).choices?.[0]?.delta?.content || "";
+          full += delta;
+          pending += delta;
+          flush();
+        } catch { /* partial JSON — ignored */ }
+      }
+    }
+    flush(true);
+    return { text: full.trim() || OFFLINE_MSG, engine: full ? "🧠 " + (cfg.model || "llama3.2 · local AI · streamed") : "offline" };
+  } catch {
+    return { text: OFFLINE_MSG, engine: "offline" };
+  }
+}
