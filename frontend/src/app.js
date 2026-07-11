@@ -20,6 +20,7 @@ const state = {
   cameraOn: false,
   demo: false,           // synthetic-athlete mode (no camera needed)
   ghost: true,           // overlay of your best rep
+  frames: 0,             // frames analyzed on-device (privacy HUD)
   repFrames: [],         // landmark frames of the current rep
   bestRep: null,         // frames of the best-scoring rep this session
   bestRepScore: -1,
@@ -61,6 +62,7 @@ async function startTracking() {
   $("stageMsg").classList.add("hidden");
   $("phaseBadge").classList.remove("hidden");
   $("btnSession").disabled = false;
+  $("btnGuided").disabled = false;
   loop();
 }
 
@@ -179,6 +181,7 @@ function startDemo() {
   $("stageMsg").classList.add("hidden");
   $("phaseBadge").classList.remove("hidden");
   $("btnSession").disabled = false;
+  $("btnGuided").disabled = false;
   selectExercise("squat");
   setCue("Demo athlete loaded — press Start session to watch the AI coach it.", "good");
   demoLoop();
@@ -189,6 +192,7 @@ function demoLoop() {
   ctx.fillStyle = "#10151c";
   ctx.fillRect(0, 0, overlay.width, overlay.height);
   const lm = demoPose(performance.now());
+  countFrame();
   if (!drawingUtils) drawingUtils = drawer();
   drawGhost();
   drawingUtils.drawConnectors(lm, PoseLandmarker.POSE_CONNECTIONS, { color: "#a3e635", lineWidth: 3 });
@@ -202,6 +206,7 @@ function loop() {
   if (video.currentTime !== state.lastVideoTime) {
     state.lastVideoTime = video.currentTime;
     const result = state.landmarker.detectForVideo(video, performance.now());
+    countFrame();
     ctx.clearRect(0, 0, overlay.width, overlay.height);
     const lm = result.landmarks?.[0];
     if (lm) {
@@ -236,7 +241,15 @@ function checkFatigue() {
   }
 }
 
+function countFrame() {
+  state.frames++;
+  if (state.frames % 15 === 0) $("framesCount").textContent = state.frames.toLocaleString();
+}
+
+const localOnly = () => $("localOnly").checked;
+
 function onFrame(lm) {
+  if (guided?.phase === "rest") return; // resting — the athlete is off the clock
   recordFrame(lm);
   const r = state.analyzer.update(lm);
   $("phaseBadge").textContent = r.phase;
@@ -268,6 +281,7 @@ function onFrame(lm) {
       speakRep(state.reps);
     }
     updateScoreRing();
+    guidedAfterRep();
   }
   if (r.metric) setCue(r.metric, "good");
 }
@@ -285,6 +299,64 @@ function setCue(text, cls) {
   el.className = "live-cue " + (cls || "");
 }
 
+/* ---------- guided workout: sets x reps, voice-run rest timers ---------- */
+
+let guided = null; // {sets, reps, rest, set, setStartReps, phase, timer}
+
+function startGuidedWorkout() {
+  guided = {
+    sets: +$("gSets").value,
+    reps: +$("gReps").value,
+    rest: +$("gRest").value,
+    set: 1,
+    setStartReps: 0,
+    phase: "work",
+    timer: null,
+  };
+  startSession();
+  speak(`Guided workout: ${guided.sets} sets of ${guided.reps}. Set 1 — go!`, { force: true });
+  setCue(`Set 1 of ${guided.sets} — ${guided.reps} reps. Go!`, "good");
+}
+
+function endGuided() {
+  if (guided?.timer) clearInterval(guided.timer);
+  guided = null;
+}
+
+function startRest() {
+  guided.phase = "rest";
+  let remaining = guided.rest;
+  $("phaseBadge").textContent = "Rest";
+  speak(`Set ${guided.set} done. Rest ${guided.rest} seconds.`, { force: true });
+  guided.timer = setInterval(() => {
+    remaining--;
+    setCue(`Rest: ${remaining}s — set ${guided.set + 1} of ${guided.sets} next`, "");
+    if (remaining === 10) speak("10 seconds.", { force: true });
+    if (remaining <= 0) {
+      clearInterval(guided.timer);
+      guided.timer = null;
+      guided.set++;
+      guided.setStartReps = state.reps;
+      guided.phase = "work";
+      speak(`Set ${guided.set} of ${guided.sets} — go!`, { force: true });
+      setCue(`Set ${guided.set} of ${guided.sets} — ${guided.reps} reps. Go!`, "good");
+    }
+  }, 1000);
+}
+
+function guidedAfterRep() {
+  if (!guided || guided.phase !== "work") return;
+  const inSet = state.reps - guided.setStartReps;
+  if (inSet < guided.reps) return;
+  if (guided.set >= guided.sets) {
+    speak("Workout complete. Outstanding work!", { force: true });
+    endGuided();
+    finishSession();
+  } else {
+    startRest();
+  }
+}
+
 function startSession() {
   state.analyzer = EXERCISES[state.exercise].make(() => +$("userHeight").value || 170);
   state.running = true;
@@ -300,6 +372,7 @@ function startSession() {
 }
 
 function finishSession() {
+  endGuided();
   state.running = false;
   $("btnSession").textContent = "Start session";
   const avg = state.scores.length
@@ -307,6 +380,7 @@ function finishSession() {
   const session = {
     date: new Date().toISOString(),
     shortDate: new Date().toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+    athlete: localStorage.getItem("formcoach.athlete") || "Solo athlete",
     exercise: EXERCISES[state.exercise].name,
     reps: state.reps,
     avgScore: avg,
@@ -321,7 +395,11 @@ function finishSession() {
     showSummary(session);
     const note = summarize(session);
     speak(note, { force: true });
-    requestReport(session, all);
+    if (localOnly()) {
+      document.getElementById("report").classList.add("hidden");
+    } else {
+      requestReport(session, all);
+    }
   } else {
     setCue("Session ended — no reps recorded.", "warn");
   }
@@ -424,6 +502,7 @@ $("chatForm").addEventListener("submit", async (e) => {
 /* ================= settings modal ================= */
 
 $("btnSettings").onclick = () => {
+  $("cfgName").value = localStorage.getItem("formcoach.athlete") || "";
   const cfg = getLLMConfig();
   $("cfgEndpoint").value = cfg.endpoint || "https://api.featherless.ai/v1/chat/completions";
   $("cfgModel").value = cfg.model || "meta-llama/Meta-Llama-3.1-8B-Instruct";
@@ -431,6 +510,8 @@ $("btnSettings").onclick = () => {
   $("settingsModal").showModal();
 };
 $("cfgSave").onclick = () => {
+  const name = $("cfgName").value.trim();
+  if (name) localStorage.setItem("formcoach.athlete", name);
   setLLMConfig({
     endpoint: $("cfgEndpoint").value.trim(),
     model: $("cfgModel").value.trim(),
@@ -459,6 +540,7 @@ document.querySelectorAll(".ex-card").forEach((card) => {
 
 $("btnCamera").onclick = () => { state.demo = false; enableCamera(); };
 $("btnDemo").onclick = startDemo;
+$("btnGuided").onclick = () => { if (!state.running) startGuidedWorkout(); };
 $("btnVideo").onclick = () => $("videoFile").click();
 $("videoFile").addEventListener("change", (e) => {
   const file = e.target.files?.[0];
@@ -528,6 +610,11 @@ if (!voiceControlSupported()) {
     }
   };
 }
+
+$("localOnly").checked = localStorage.getItem("formcoach.localOnly") === "1";
+$("localOnly").addEventListener("change", () => {
+  localStorage.setItem("formcoach.localOnly", $("localOnly").checked ? "1" : "0");
+});
 
 $("ghostToggle").onclick = () => {
   state.ghost = !state.ghost;

@@ -14,6 +14,13 @@ Built solo in under 24 hours for **United Hacks V7** (Sports track).
 
 ## ✨ Features
 
+- **🏁 Guided workout mode** — pick sets × reps and the coach runs the whole workout
+  by voice: counts you through each set, calls rest periods with a countdown, announces
+  the next set
+- **🧑‍🏫 Coach Team Dashboard** — one backend serves a whole squad: every athlete's
+  sessions, form trends, and injury-risk flags in one view (`http://localhost:8001/dashboard`)
+- **🔒 Live privacy proof** — an on-screen counter of frames analyzed on-device vs
+  video bytes uploaded (always 0), plus a local-only mode that sends nothing at all
 - **📐 Live telestration** — broadcast-style joint-angle readouts (knee/elbow degrees)
   drawn on the athlete in real time
 - **👻 Ghost rep** — your best-scoring rep replays as a translucent skeleton over you,
@@ -129,6 +136,7 @@ backend/                        multi-agent coaching API (layered FastAPI packag
   app/
     main.py                     app factory + middleware
     routes.py                   API endpoints
+    dashboard.py                coach team dashboard (multi-athlete view)
     agents.py                   the 4 coaching agents (Claude + rules engines)
     models.py                   Pydantic schemas
     db.py                       SQLite persistence

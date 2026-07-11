@@ -10,6 +10,7 @@ class Session(BaseModel):
     avgScore: int
     faults: dict[str, int] = {}
     bestJumpCm: int = 0
+    athlete: str = "Solo athlete"
 
 
 class AnalyzeRequest(BaseModel):

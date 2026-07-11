@@ -57,3 +57,15 @@ def test_reports_persist():
 def test_analyze_rejects_bad_payload():
     r = client.post("/api/analyze", json={"session": {"exercise": "Squat"}})
     assert r.status_code == 422
+
+
+def test_dashboard_serves():
+    r = client.get("/dashboard")
+    assert r.status_code == 200
+    assert "Coach Dashboard" in r.text
+
+
+def test_reports_carry_athlete():
+    client.post("/api/analyze", json={"session": {**SESSION, "athlete": "Test Athlete"}, "history": []})
+    latest = client.get("/api/reports?limit=1").json()[0]
+    assert latest["athlete"] == "Test Athlete"

@@ -18,4 +18,8 @@ def connect() -> sqlite3.Connection:
              report_json TEXT NOT NULL
            )"""
     )
+    try:  # migrate pre-athlete databases
+        conn.execute("ALTER TABLE reports ADD COLUMN athlete TEXT NOT NULL DEFAULT 'Solo athlete'")
+    except sqlite3.OperationalError:
+        pass
     return conn

@@ -369,3 +369,23 @@ button { font: inherit; cursor: pointer; }
   border-radius: 8px; padding: 0.5rem 0.7rem; color: var(--ink);
 }
 .modal-actions { display: flex; gap: 0.6rem; justify-content: flex-end; }
+
+/* ---------- privacy HUD ---------- */
+.hud-privacy { border-color: rgba(163, 230, 53, 0.25); }
+.privacy-stats { color: var(--ink-2); font-size: 0.8rem; line-height: 1.5; }
+.privacy-stats b { color: var(--accent); font-variant-numeric: tabular-nums; }
+.privacy-local {
+  display: flex; gap: 0.45rem; align-items: flex-start;
+  margin-top: 0.55rem; color: var(--ink-muted); font-size: 0.76rem; cursor: pointer;
+}
+.privacy-local input { accent-color: var(--accent); margin-top: 2px; }
+
+/* ---------- guided workout ---------- */
+.guided-bar {
+  display: flex; gap: 0.9rem; align-items: center; flex-wrap: wrap;
+  margin: 0.9rem 0 1rem; color: var(--ink-2); font-size: 0.9rem;
+}
+.guided-bar select {
+  background: var(--surface); color: var(--ink);
+  border: 1px solid var(--border); border-radius: 8px; padding: 0.35rem 0.5rem;
+}

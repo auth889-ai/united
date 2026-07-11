@@ -34,13 +34,14 @@ async def analyze(req: AnalyzeRequest) -> dict:
 
     conn = db.connect()
     conn.execute(
-        "INSERT INTO reports (created_at, exercise, reps, avg_score, report_json) VALUES (?,?,?,?,?)",
+        "INSERT INTO reports (created_at, exercise, reps, avg_score, report_json, athlete) VALUES (?,?,?,?,?,?)",
         (
             datetime.now(timezone.utc).isoformat(),
             req.session.exercise,
             req.session.reps,
             req.session.avgScore,
             json.dumps(report),
+            req.session.athlete,
         ),
     )
     conn.commit()
@@ -52,7 +53,7 @@ async def analyze(req: AnalyzeRequest) -> dict:
 def reports(limit: int = 20) -> list[dict]:
     conn = db.connect()
     rows = conn.execute(
-        "SELECT created_at, exercise, reps, avg_score, report_json FROM reports ORDER BY id DESC LIMIT ?",
+        "SELECT created_at, exercise, reps, avg_score, report_json, athlete FROM reports ORDER BY id DESC LIMIT ?",
         (limit,),
     ).fetchall()
     conn.close()
@@ -63,6 +64,7 @@ def reports(limit: int = 20) -> list[dict]:
             "reps": r[2],
             "avg_score": r[3],
             "report": json.loads(r[4]),
+            "athlete": r[5],
         }
         for r in rows
     ]

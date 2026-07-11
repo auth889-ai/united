@@ -12,6 +12,7 @@ explainable report: every agent shows its score, findings, and reasoning.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from .dashboard import router as dashboard_router
 from .routes import router
 
 
@@ -28,6 +29,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     app.include_router(router)
+    app.include_router(dashboard_router)
     return app
 
 

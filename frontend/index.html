@@ -113,6 +113,19 @@
       <input type="number" id="userHeight" value="170" min="100" max="230" />
     </div>
 
+    <div class="guided-bar">
+      <label>Sets
+        <select id="gSets"><option>2</option><option selected>3</option><option>4</option><option>5</option></select>
+      </label>
+      <label>Reps per set
+        <select id="gReps"><option>5</option><option>8</option><option selected>10</option><option>12</option><option>15</option></select>
+      </label>
+      <label>Rest
+        <select id="gRest"><option value="30">30s</option><option value="45" selected>45s</option><option value="60">60s</option><option value="90">90s</option></select>
+      </label>
+      <button id="btnGuided" class="btn btn-ghost" disabled>🏁 Start guided workout</button>
+    </div>
+
     <div class="stage-wrap">
       <div class="stage">
         <video id="video" playsinline muted></video>
@@ -145,6 +158,17 @@
         <div class="hud-actions">
           <button id="btnSession" class="btn btn-primary" disabled>Start session</button>
           <button id="ghostToggle" class="chip" aria-pressed="true" title="Overlay your best rep as a translucent skeleton">👻 Ghost rep on</button>
+        </div>
+        <div class="hud-block hud-privacy">
+          <span class="hud-label">🔒 Privacy — live proof</span>
+          <p class="privacy-stats">
+            <b id="framesCount">0</b> frames analyzed on-device<br />
+            <b>0</b> video bytes uploaded — verify in DevTools → Network
+          </p>
+          <label class="privacy-local">
+            <input type="checkbox" id="localOnly" />
+            Local-only mode — send nothing, not even stats
+          </label>
         </div>
       </aside>
     </div>
@@ -206,6 +230,7 @@
       <div class="how-card"><span>2</span><h3>Biomechanics engine</h3><p>Joint angles (hip–knee–ankle, shoulder–elbow–wrist, body line) run through a per-exercise state machine that detects reps and phases.</p></div>
       <div class="how-card"><span>3</span><h3>Form scoring</h3><p>Each rep starts at 100 and loses points for depth, alignment and stability faults — the same cues a physio checks.</p></div>
       <div class="how-card"><span>4</span><h3>Voice in, voice out</h3><p>Faults are spoken aloud, and the app listens back — "start", "switch to squats", "how am I doing" — so the entire workout works eyes-free, including for blind and low-vision athletes.</p></div>
+      <div class="how-card"><span>🔒</span><h3>Privacy by architecture</h3><p>Pose estimation runs in WebAssembly on your GPU. Your camera feed physically cannot leave the browser — open DevTools → Network and watch: zero video bytes, ever. Local-only mode sends nothing at all.</p></div>
     </div>
   </section>
 
@@ -217,6 +242,9 @@
   <dialog id="settingsModal" class="modal">
     <h3>AI coach settings</h3>
     <p class="modal-sub">Optional. Connect any OpenAI-compatible API. Your key is stored only in this browser (localStorage).</p>
+    <label>Athlete name (shown on the coach dashboard)
+      <input id="cfgName" type="text" placeholder="Solo athlete" />
+    </label>
     <label>Endpoint
       <input id="cfgEndpoint" type="url" placeholder="https://api.featherless.ai/v1/chat/completions" />
     </label>
