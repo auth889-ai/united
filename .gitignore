@@ -1,4 +1,6 @@
 __pycache__/
 backend/formcoach.db
 .DS_Store
-.mdVIDEO_SCRIPT.md
+.mdVIDEO_SCRIPT
+
+.md
