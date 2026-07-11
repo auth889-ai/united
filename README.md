@@ -170,6 +170,7 @@ backend/                        multi-agent coaching API (layered FastAPI packag
 ## ✅ Tests
 
 ```bash
+./run_tests.sh                       # everything, one by one, with a checklist
 pytest backend/tests -v              # 8 API tests
 node frontend/tests/engine.test.mjs  # 7 biomechanics engine tests
 node frontend/tests/auth.test.mjs    # 12 zero-knowledge auth tests

@@ -88,8 +88,8 @@ export function getLLMConfig() {
 }
 export function setLLMConfig(cfg) { localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); }
 
-async function llmReply(question, history) {
-  const cfg = getLLMConfig();
+async function llmReply(question, history, override) {
+  const cfg = override || getLLMConfig();
   const stats = history.slice(-5);
   const headers = { "Content-Type": "application/json" };
   if (cfg.key) headers.Authorization = `Bearer ${cfg.key}`; // Ollama needs no key
@@ -115,12 +115,33 @@ async function llmReply(question, history) {
   return data.choices?.[0]?.message?.content?.trim() || "(empty reply)";
 }
 
-// Always answers: tries the LLM when configured, falls back to rules.
+// Zero-config local AI: if no LLM is configured, auto-detect Ollama running
+// on this machine and use it. Checked once per page load.
+let ollamaDetected = null;
+async function detectOllama() {
+  if (ollamaDetected !== null) return ollamaDetected;
+  try {
+    const res = await fetch("http://localhost:11434/api/tags", { signal: AbortSignal.timeout(1500) });
+    ollamaDetected = res.ok;
+  } catch { ollamaDetected = false; }
+  return ollamaDetected;
+}
+
+// Always answers: configured LLM -> auto-detected local Ollama -> rules coach.
 export async function coachReply(question, history) {
   const cfg = getLLMConfig();
   if (cfg.endpoint && cfg.model) {
     try { return await llmReply(question, history); }
     catch { return "(LLM unreachable — built-in coach) " + ruleReply(question, history); }
+  }
+  if (await detectOllama()) {
+    try {
+      return await llmReply(question, history, {
+        endpoint: "http://localhost:11434/v1/chat/completions",
+        model: "llama3.2",
+        key: "",
+      });
+    } catch { /* fall through to rules */ }
   }
   return ruleReply(question, history);
 }
