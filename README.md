@@ -37,6 +37,11 @@ Built solo in under 48 hours for **United Hacks V7** (Sports track).
   measurement timeline (when, what, by how many degrees) and writes a detailed
   chronological review — like a coach who watched the whole set, citing rep numbers
   and timestamps from the data
+- **🔍 Deep visual analysis** — a local *vision* model (auto-detected: moondream,
+  LLaVA, gemma3-vision…) actually *looks* at your timestamped fault photos and
+  describes what it sees in your body position — images never leave your machine
+- **🎧 Barge-in mode** — with headphones on, interrupt the coach mid-sentence like a
+  real conversation: it stops talking and listens
 - **👻 Movement Twin** — your best rep becomes *your* baseline: it replays as a translucent
   skeleton to race, and every rep that falls short gets a **measured deviation** — "Torso
   leaned 13° more than your best rep", "Depth 11° short of your best" — with fatigue

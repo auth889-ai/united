@@ -46,6 +46,12 @@ FormCoach AI watches you train and coaches you in real time:
   measurement timeline — scores, angles, Twin deviations, the fatigue point — and
   writes a chronological review citing rep numbers, timestamps and degrees from the
   data. Real-time stays instant physics; the deep analysis comes when you rest.
+- **Deep visual analysis by a local vision model.** One click sends your timestamped
+  fault *photos* to an auto-detected local vision model (moondream/LLaVA/gemma3),
+  which looks at the actual images and describes your body position and how to fix
+  it — streamed in, fully offline, photos never leave the device.
+- **Barge-in conversation.** With headphones on, you can interrupt the coach
+  mid-sentence — it stops talking and listens, like a real human conversation.
 - **A live AI commentator.** Every few reps, a local LLM (Ollama) reacts to what the
   vision engine just measured — rep score, Twin deviation, fatigue state — and speaks a
   fresh line. Instant physics cues handle safety; the AI adds the human touch.
