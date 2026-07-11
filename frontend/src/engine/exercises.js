@@ -59,7 +59,10 @@ class SquatAnalyzer {
       return { phase: "—", repDone: false, repScore: null, cues: [{ text: "Step back — I need to see your hips, knees and ankles.", level: P.INFO }] };
     }
     const knee = angle(lm[s.hip], lm[s.knee], lm[s.ankle]);
-    const lean = leanFromVertical(lm[s.shoulder], lm[s.hip]);
+    // Lean is only meaningful when the torso has real vertical extent —
+    // seated/close-up poses degenerate the 2D shoulder-hip segment.
+    const torsoLen = lm[s.hip].y - lm[s.shoulder].y;
+    const lean = torsoLen > 0.12 ? leanFromVertical(lm[s.shoulder], lm[s.hip]) : 0;
     const cues = [];
     let repDone = false, repScore = null;
 
@@ -75,9 +78,13 @@ class SquatAnalyzer {
     }
 
     // Enter "down" at 120° so partial squats still register (and get scored down).
-    if (this.state === "up" && knee < 120) { this.state = "down"; this.downFrames = 0; }
+    if (this.state === "up" && knee < 120) { this.state = "down"; this.downFrames = 0; this.seatedWarned = false; }
     if (this.state === "down") {
       this.downFrames++;
+      if (this.downFrames > 300 && !this.seatedWarned) { // ~10s stuck "down"
+        this.seatedWarned = true;
+        cues.push({ text: "Are you sitting down? Stand up and step back so I can see your whole body.", level: P.WARN });
+      }
       this.minKnee = Math.min(this.minKnee, knee);
       this.maxLean = Math.max(this.maxLean, lean);
       if (knee < 115 && this.minKnee > 95) cues.push({ text: "Go a little deeper.", level: P.INFO });

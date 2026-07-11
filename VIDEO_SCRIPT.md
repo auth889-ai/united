@@ -1,80 +1,88 @@
-# Demo video script — target 2:30–3:00 (judges stop watching long videos)
+# Demo video script — FINAL — target 2:45–3:15 (never over 4:00)
 
-**Setup:** Record with OBS (free) or any screen recorder + your phone if needed.
-Two scenes: (A) screen recording of the app, (B) you training in front of the
-webcam with the app visible. Scene B *is* the money shot — the live skeleton
-overlay while you squat is what judges remember. Speak with energy. Smile.
+**Setup:** OBS (free) recording both your screen AND your webcam view. Two scenes:
+(A) screen-only, (B) you on camera training with the app visible. Good light,
+camera at hip height, 2–3 m back, whole body in frame, contrasting clothes.
+System audio ON — judges must HEAR the coach. Speak with energy. Smile. Winners
+(WebHangin) won with personality, not perfection — if you laugh at a mistake,
+keep it in.
 
 ---
 
-## 0:00–0:20 — The hook (say this over Scene B footage, you mid-squat with skeleton overlay)
+## 0:00–0:20 — Hook (Scene B: you mid-squat, skeleton + angle numbers visible)
 
-> "A personal coach costs $50 an hour. This one is free, lives in your browser,
-> and is watching my squat right now. It just told me to go deeper — out loud.
-> This is FormCoach AI: a real-time sports form coach that needs nothing but
-> the webcam you already own."
+> "Bad form causes over half of all gym injuries — and a coach costs more per
+> hour than I spend on food in a week. So I built one. This is FormCoach AI —
+> it's watching my squat right now, live, in the browser. Watch: it just told
+> me to go deeper. Out loud."
 
-*(Devpost's own judges say the elevator pitch must be in the first few seconds —
-this does it in 20.)*
+*(Do one deliberately shallow squat so it actually says it.)*
 
-## 0:20–0:50 — The problem
+## 0:20–0:40 — The problem + who it's for
 
-> "Improper technique causes roughly **55% of all gym injuries** — squat form
-> alone accounts for nearly half of barbell-related lower-back strains in
-> beginners. Most athletes train alone, and training alone means training blind. Bad squat
-> depth, sagging push-up hips — these faults stall your progress and cause the
-> knee and back injuries that end amateur careers. The problem isn't motivation.
-> It's feedback. Coaches are expensive, wearables are extra hardware, and fitness
-> apps just play videos AT you. None of them watch YOU."
+> "Most athletes train alone, which means training blind. FormCoach turns the
+> webcam you already own into a real coach: it counts reps, scores every rep
+> out of 100 against the same faults a physiotherapist checks, spots knees
+> caving in — the number one ACL risk — and even notices when fatigue is
+> degrading my form and tells me to rest BEFORE I get hurt."
 
-## 0:50–2:00 — Live demo (the core — all Scene B, real-time, unedited if possible)
+## 0:40–1:25 — Core demo (Scene B, unedited if possible)
 
-Do these on camera, narrating:
+1. **Squats (20s):** 3 good reps — reps count, score ring fills, live knee
+   angles float on your joints. *"Those angle readouts are broadcast-style
+   telestration — computed from 33 body landmarks, 30 times a second,
+   entirely on my device."*
+2. **Ghost rep (10s):** point at the translucent skeleton. *"And that ghost?
+   That's my own best rep, replaying — every rep races my best form."*
+3. **Voice conversation (15s):** while still standing there, say out loud:
+   **"Coach, what should I fix first?"** — let the room hear the spoken answer.
+   *"I never touched the screen. It talks AND listens — a blind athlete can run
+   an entire session eyes-free."*
 
-1. **Squats (30s):** Do 3 good squats — reps count up, score ring fills, coach
-   says numbers. Then do 1 shallow squat → app says "Too shallow — aim to get
-   thighs near parallel" and the score drops. Say: *"It caught that instantly —
-   that's a joint-angle state machine over 33 body landmarks, running at 30
-   frames per second, entirely on my device."*
-2. **Vertical jump (25s):** Switch to jump test, hold still to calibrate, jump.
-   > "No force plates, no equipment — it calibrates against my own body
-   > proportions and just measured my jump at __ centimetres."
-3. **Voice control (15s):** Toggle the mic and — without touching anything — say
-   *"switch to squats"*, *"start"*, *"how am I doing?"*. The app obeys and answers
-   out loud. Say: *"It talks AND listens. The whole workout works eyes-free —
-   which makes this the first form coach a blind athlete can actually use."*
-4. **Finish → multi-agent report (20s):** Say *"finish"* → summary cards + the
-   AI Coaching Report renders. *"My joint-angle stats — never my video — go to a
-   backend where four specialized AI agents analyze in parallel: biomechanics,
-   injury risk, programming, and progress. Every verdict shows its reasoning.
-   Transparent AI, not a black box."*
+## 1:25–1:50 — Guided workout + jump test (Scene B)
 
-## 2:00–2:25 — Progress + AI coach (Scene A, screen only)
+- Say **"switch to squats… start"** by voice, or click 🏁 Guided workout:
+  *"It runs whole workouts by voice — counts my sets, calls my rest periods."*
+  Show 2–3 reps + the rest countdown kicking in.
+- Quick vertical jump: *"No force plates — it measures my jump in centimetres
+  by calibrating against my own body."*
 
-Also flash the **"Watch AI demo — no camera"** button: *"And if you don't have a
-camera handy — judges, this means you — a synthetic athlete demos the whole
-engine with one click."*
+## 1:50–2:15 — The YouTube moment (Scene A)
 
-> "Sessions build a form-score history, so you can watch your technique trend up.
-> And the coach chat knows my numbers — I ask 'what should I fix first' and it
-> answers from MY session data. It even supports plugging in any LLM, like
-> sponsor Featherless AI."
+Click **🖥 Analyze your screen**, share a YouTube tab playing a squat video
+(queue one beforehand: search "20 bodyweight squats follow along"), press
+Start session:
 
-## 2:25–2:50 — The kicker + close
+> "It doesn't just coach me. Watch it coach a YouTube video — live. Skeleton,
+> angles, rep counting, on an athlete who isn't even here. Any footage on
+> Earth becomes coachable."
 
-> "Here's my favorite part: there is no backend. Pose estimation runs in
-> WebAssembly on the GPU, so zero bytes of video ever leave your device.
-> Privacy isn't a policy here — it's the architecture.
->
-> FormCoach AI: every athlete deserves a coach. Now everyone has one.
-> Built solo, in 24 hours, for United Hacks V7."
+## 2:15–2:45 — Privacy, accounts, and the AI report (Scene A)
+
+1. Point at the Privacy HUD: *"Here's my favorite part: 14,000 frames analyzed,
+   ZERO video bytes uploaded — you can verify it in DevTools. Privacy isn't a
+   policy here, it's the architecture."*
+2. Flash the sign-in screen: *"Accounts with no server: my history is AES-256
+   encrypted with a key from my password. There is no database to breach."*
+3. Finish the session → agent report renders: *"Four AI agents analyze every
+   session in parallel — biomechanics, injury risk, programming, progress —
+   and every verdict shows its reasoning."* Show the radar chart, then one
+   glance at the coach dashboard: *"and a coach can watch a whole team."*
+
+## 2:45–3:05 — Close (Scene B, face to camera)
+
+> "Real-time computer vision, a biomechanics engine, voice in and out,
+> encrypted accounts, 33 automated tests, deployed live — built solo in one
+> weekend for United Hacks. FormCoach AI: every athlete deserves a coach.
+> Now everyone has one. I really love this project — I hope you do too."
 
 ---
 
 ## Recording checklist
-- [ ] Good lighting, camera at hip height, 2–3 m back, full body visible
-- [ ] Wear clothing that contrasts with the background (tracking looks better)
-- [ ] System audio ON so judges hear the voice coaching — it's the wow moment
-- [ ] Show the URL bar during the live demo (proves it's real and deployed)
-- [ ] Keep it UNDER 3 minutes; upload to YouTube as unlisted; test the link in incognito
-- [ ] First 15 seconds must show the product working — no title cards, no slides
+- [ ] Practice the voice-question beat once (mic ON, say it clearly)
+- [ ] Have the YouTube squat video queued in another tab beforehand
+- [ ] Both servers running (frontend :8000, backend :8001) — record LOCAL, not the Pages URL, so the agent report works
+- [ ] Do one session before recording so streaks/chart/dashboard have data
+- [ ] Show the URL bar once (proves it's real)
+- [ ] Under 4 minutes — 3:00 is the sweet spot; first 20 seconds must show the product working
+- [ ] Upload to YouTube (unlisted), test the link in incognito, paste into Devpost AND into README's demo-video slot
