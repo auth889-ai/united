@@ -1,0 +1,226 @@
+// Biomechanics engine: joint-angle math + per-exercise state machines.
+// Landmarks follow MediaPipe Pose indices.
+
+export const LM = {
+  NOSE: 0,
+  L_SHOULDER: 11, R_SHOULDER: 12,
+  L_ELBOW: 13, R_ELBOW: 14,
+  L_WRIST: 15, R_WRIST: 16,
+  L_HIP: 23, R_HIP: 24,
+  L_KNEE: 25, R_KNEE: 26,
+  L_ANKLE: 27, R_ANKLE: 28,
+};
+
+// Angle at vertex b (degrees) between rays b->a and b->c.
+export function angle(a, b, c) {
+  const abx = a.x - b.x, aby = a.y - b.y;
+  const cbx = c.x - b.x, cby = c.y - b.y;
+  const dot = abx * cbx + aby * cby;
+  const magA = Math.hypot(abx, aby), magC = Math.hypot(cbx, cby);
+  if (magA === 0 || magC === 0) return 180;
+  const cos = Math.min(1, Math.max(-1, dot / (magA * magC)));
+  return (Math.acos(cos) * 180) / Math.PI;
+}
+
+// Angle of segment a->b from vertical (0 = perfectly upright).
+function leanFromVertical(top, bottom) {
+  const dx = top.x - bottom.x, dy = top.y - bottom.y;
+  return Math.abs((Math.atan2(dx, -dy) * 180) / Math.PI);
+}
+
+function vis(lm, ...ids) {
+  return ids.reduce((s, i) => s + (lm[i]?.visibility ?? 0), 0) / ids.length;
+}
+
+// Pick the better-visible side; returns landmark ids for that side.
+function bestSide(lm) {
+  const left = vis(lm, LM.L_SHOULDER, LM.L_HIP, LM.L_KNEE, LM.L_ANKLE);
+  const right = vis(lm, LM.R_SHOULDER, LM.R_HIP, LM.R_KNEE, LM.R_ANKLE);
+  return left >= right
+    ? { shoulder: LM.L_SHOULDER, elbow: LM.L_ELBOW, wrist: LM.L_WRIST, hip: LM.L_HIP, knee: LM.L_KNEE, ankle: LM.L_ANKLE }
+    : { shoulder: LM.R_SHOULDER, elbow: LM.R_ELBOW, wrist: LM.R_WRIST, hip: LM.R_HIP, knee: LM.R_KNEE, ankle: LM.R_ANKLE };
+}
+
+// Cue priorities: higher = spoken first.
+const P = { CRITICAL: 3, WARN: 2, INFO: 1 };
+
+/* ------------------------------------------------------------------ *
+ * Each analyzer:  reset()  ·  update(lm) -> {
+ *   phase, repDone (bool), repScore (0-100 | null), cues: [{text, level}],
+ *   metric (label shown under reps, e.g. jump height)
+ * } ------------------------------------------------------------------ */
+
+class SquatAnalyzer {
+  constructor() { this.reset(); }
+  reset() { this.state = "up"; this.minKnee = 180; this.maxLean = 0; }
+  update(lm) {
+    const s = bestSide(lm);
+    if (vis(lm, s.hip, s.knee, s.ankle) < 0.5) {
+      return { phase: "—", repDone: false, repScore: null, cues: [{ text: "Step back — I need to see your hips, knees and ankles.", level: P.INFO }] };
+    }
+    const knee = angle(lm[s.hip], lm[s.knee], lm[s.ankle]);
+    const lean = leanFromVertical(lm[s.shoulder], lm[s.hip]);
+    const cues = [];
+    let repDone = false, repScore = null;
+
+    if (this.state === "up" && knee < 110) this.state = "down";
+    if (this.state === "down") {
+      this.minKnee = Math.min(this.minKnee, knee);
+      this.maxLean = Math.max(this.maxLean, lean);
+      if (knee < 105 && this.minKnee > 95) cues.push({ text: "Go a little deeper.", level: P.INFO });
+      if (lean > 50) cues.push({ text: "Chest up — you're leaning too far forward.", level: P.CRITICAL });
+      if (knee > 155) { // completed the rep
+        this.state = "up";
+        repDone = true;
+        repScore = 100;
+        if (this.minKnee > 110) { repScore -= 30; cues.push({ text: "Too shallow — aim to get thighs near parallel.", level: P.WARN }); }
+        else if (this.minKnee > 95) { repScore -= 12; }
+        if (this.maxLean > 50) repScore -= 25;
+        else if (this.maxLean > 40) repScore -= 10;
+        if (repScore >= 90) cues.push({ text: "Great depth, strong rep!", level: P.INFO });
+        this.minKnee = 180; this.maxLean = 0;
+      }
+    }
+    return { phase: this.state === "down" ? "Down" : "Up", repDone, repScore, cues };
+  }
+}
+
+class PushupAnalyzer {
+  constructor() { this.reset(); }
+  reset() { this.state = "up"; this.minElbow = 180; this.worstLine = 180; }
+  update(lm) {
+    const s = bestSide(lm);
+    if (vis(lm, s.shoulder, s.elbow, s.wrist, s.hip) < 0.5) {
+      return { phase: "—", repDone: false, repScore: null, cues: [{ text: "Turn side-on to the camera so I can see your arm and body line.", level: P.INFO }] };
+    }
+    const elbow = angle(lm[s.shoulder], lm[s.elbow], lm[s.wrist]);
+    // Body line needs a visible ankle — feet out of frame would produce
+    // garbage angles and false "hips sagging" alarms.
+    const ankleVisible = (lm[s.ankle]?.visibility ?? 0) > 0.5;
+    const bodyLine = ankleVisible ? angle(lm[s.shoulder], lm[s.hip], lm[s.ankle]) : 180;
+    const cues = [];
+    let repDone = false, repScore = null;
+
+    if (bodyLine < 155) cues.push({ text: "Hips sagging — squeeze your glutes, straight body line.", level: P.CRITICAL });
+
+    if (this.state === "up" && elbow < 100) this.state = "down";
+    if (this.state === "down") {
+      this.minElbow = Math.min(this.minElbow, elbow);
+      this.worstLine = Math.min(this.worstLine, bodyLine);
+      if (elbow > 150) {
+        this.state = "up";
+        repDone = true;
+        repScore = 100;
+        if (this.minElbow > 100) { repScore -= 25; cues.push({ text: "Go lower — chest toward the floor.", level: P.WARN }); }
+        if (this.worstLine < 155) repScore -= 25;
+        else if (this.worstLine < 165) repScore -= 10;
+        if (repScore >= 90) cues.push({ text: "Clean push-up, nice line!", level: P.INFO });
+        this.minElbow = 180; this.worstLine = 180;
+      }
+    }
+    return { phase: this.state === "down" ? "Down" : "Up", repDone, repScore, cues };
+  }
+}
+
+class CurlAnalyzer {
+  constructor() { this.reset(); }
+  reset() { this.state = "extended"; this.minElbow = 180; this.maxDrift = 0; }
+  update(lm) {
+    const s = bestSide(lm);
+    if (vis(lm, s.shoulder, s.elbow, s.wrist) < 0.5) {
+      return { phase: "—", repDone: false, repScore: null, cues: [{ text: "Move so your arm is fully in frame.", level: P.INFO }] };
+    }
+    const elbow = angle(lm[s.shoulder], lm[s.elbow], lm[s.wrist]);
+    const drift = leanFromVertical(lm[s.shoulder], lm[s.elbow]); // upper arm swing
+    const cues = [];
+    let repDone = false, repScore = null;
+
+    if (this.state === "extended" && elbow < 80) this.state = "flexed";
+    if (this.state === "flexed") {
+      this.minElbow = Math.min(this.minElbow, elbow);
+      this.maxDrift = Math.max(this.maxDrift, drift);
+      if (drift > 30) cues.push({ text: "Pin your elbow to your side — no swinging.", level: P.WARN });
+      if (elbow > 150) {
+        this.state = "extended";
+        repDone = true;
+        repScore = 100;
+        if (this.minElbow > 60) { repScore -= 15; cues.push({ text: "Squeeze all the way up at the top.", level: P.INFO }); }
+        if (this.maxDrift > 35) repScore -= 25;
+        else if (this.maxDrift > 25) repScore -= 10;
+        if (repScore >= 90) cues.push({ text: "Strict curl — textbook.", level: P.INFO });
+        this.minElbow = 180; this.maxDrift = 0;
+      }
+    }
+    return { phase: this.state === "flexed" ? "Curling" : "Extended", repDone, repScore, cues };
+  }
+}
+
+// Vertical jump: calibrates standing hip height + body length in normalized
+// units, then converts hip rise into centimetres using the user's real height.
+class JumpAnalyzer {
+  constructor(getUserHeightCm) { this.getUserHeightCm = getUserHeightCm; this.reset(); }
+  reset() {
+    this.samples = [];        // calibration hip-y samples
+    this.baseHipY = null;
+    this.bodyLen = null;      // nose->ankle in normalized units
+    this.state = "ground";
+    this.peakRise = 0;
+    this.lastJumpCm = 0;
+    this.bestJumpCm = 0;
+  }
+  update(lm) {
+    if (vis(lm, LM.L_HIP, LM.R_HIP, LM.L_ANKLE, LM.R_ANKLE, LM.NOSE) < 0.5) {
+      return { phase: "—", repDone: false, repScore: null, cues: [{ text: "Stand back — I need your whole body, head to feet.", level: P.INFO }] };
+    }
+    const hipY = (lm[LM.L_HIP].y + lm[LM.R_HIP].y) / 2;
+    const ankleY = (lm[LM.L_ANKLE].y + lm[LM.R_ANKLE].y) / 2;
+    const cues = [];
+    let repDone = false, repScore = null;
+
+    // Calibrate over the first ~30 stable frames.
+    if (this.baseHipY === null) {
+      this.samples.push({ hipY, bodyLen: ankleY - lm[LM.NOSE].y });
+      if (this.samples.length >= 30) {
+        this.baseHipY = this.samples.reduce((s, v) => s + v.hipY, 0) / this.samples.length;
+        this.bodyLen = this.samples.reduce((s, v) => s + v.bodyLen, 0) / this.samples.length;
+        cues.push({ text: "Calibrated. Jump as high as you can!", level: P.INFO });
+      } else {
+        cues.push({ text: "Hold still, calibrating…", level: P.INFO });
+      }
+      return { phase: "Calibrating", repDone, repScore, cues, metric: null };
+    }
+
+    const rise = this.baseHipY - hipY; // + when hips move up
+    const threshold = this.bodyLen * 0.06;
+
+    if (this.state === "ground" && rise > threshold) { this.state = "air"; this.peakRise = rise; }
+    if (this.state === "air") {
+      this.peakRise = Math.max(this.peakRise, rise);
+      if (rise < threshold * 0.5) {
+        this.state = "ground";
+        // nose->ankle ≈ 93% of standing height
+        const cmPerUnit = this.getUserHeightCm() * 0.93 / this.bodyLen;
+        this.lastJumpCm = Math.max(0, Math.round(this.peakRise * cmPerUnit));
+        this.bestJumpCm = Math.max(this.bestJumpCm, this.lastJumpCm);
+        repDone = true;
+        repScore = Math.min(100, Math.round((this.lastJumpCm / 50) * 100)); // 50cm = 100
+        cues.push({ text: `${this.lastJumpCm} centimetres!`, level: P.INFO });
+        this.peakRise = 0;
+      }
+    }
+    return {
+      phase: this.state === "air" ? "Airborne" : "Ready",
+      repDone, repScore, cues,
+      metric: this.bestJumpCm ? `Best: ${this.bestJumpCm} cm · Last: ${this.lastJumpCm} cm` : null,
+    };
+  }
+}
+
+export const EXERCISES = {
+  squat:  { name: "Squat",         repNoun: "Reps",  make: () => new SquatAnalyzer() },
+  pushup: { name: "Push-up",       repNoun: "Reps",  make: () => new PushupAnalyzer() },
+  curl:   { name: "Bicep curl",    repNoun: "Reps",  make: () => new CurlAnalyzer() },
+  jump:   { name: "Vertical jump", repNoun: "Jumps", make: (getH) => new JumpAnalyzer(getH) },
+};
+
+export const PRIORITY = P;

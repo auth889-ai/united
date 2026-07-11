@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FormCoach AI — your AI sports form coach</title>
+  <meta name="description" content="Real-time AI form coaching for athletes. Pose estimation in your browser — no app, no wearables, no data leaves your device." />
+  <meta property="og:title" content="FormCoach AI — every athlete deserves a coach" />
+  <meta property="og:description" content="Your webcam becomes a real-time form coach: rep counting, form scoring, voice coaching, hands-free control, and a 4-agent AI readiness report. 100% on-device pose tracking." />
+  <meta property="og:type" content="website" />
+  <meta name="theme-color" content="#0b0e13" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏋️</text></svg>" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">FC</span>
+      <span class="brand-name">FormCoach <em>AI</em></span>
+    </div>
+    <nav class="topnav">
+      <a href="#train">Train</a>
+      <a href="#progress">Progress</a>
+      <a href="#coach">Coach</a>
+      <button id="voiceToggle" class="chip" aria-pressed="true" title="Toggle voice coaching">🔊 Voice on</button>
+      <button id="micToggle" class="chip" aria-pressed="false" title="Hands-free voice control — say 'help' for commands">🎤 Voice control</button>
+    </nav>
+  </header>
+
+  <!-- ============ HERO ============ -->
+  <section class="hero">
+    <div class="hero-copy">
+      <p class="eyebrow">United Hacks V7 · Sports Track</p>
+      <h1>Every athlete deserves a coach.<br /><span class="accent">Now everyone has one.</span></h1>
+      <p class="lede">
+        FormCoach AI watches your training through your webcam and coaches you in real time —
+        counting reps, scoring your form, and calling out injury risks out loud, like a coach
+        standing next to you. It talks <em>and listens</em>: full voice control makes it the first
+        training coach that <strong>blind and low-vision athletes can use eyes-free</strong>.
+        Runs 100% in your browser. No app. No wearables.
+        <strong>No video ever leaves your device.</strong>
+      </p>
+      <div class="hero-cta">
+        <a href="#train" class="btn btn-primary">Start training →</a>
+        <a href="#how" class="btn btn-ghost">How it works</a>
+      </div>
+      <ul class="hero-stats">
+        <li><strong>33</strong><span>body landmarks tracked</span></li>
+        <li><strong>30fps</strong><span>on-device inference</span></li>
+        <li><strong>0</strong><span>bytes of video uploaded</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============ TRAIN ============ -->
+  <main id="train" class="app">
+    <h2 class="section-title">Train</h2>
+    <p class="section-sub">Pick a drill, allow camera access, and stand back so your full body is visible.</p>
+
+    <div class="exercise-picker" role="tablist" aria-label="Choose exercise">
+      <button class="ex-card selected" data-ex="squat" role="tab" aria-selected="true">
+        <span class="ex-icon">🏋️</span>
+        <span class="ex-name">Squat</span>
+        <span class="ex-desc">Depth · knee tracking · chest position</span>
+      </button>
+      <button class="ex-card" data-ex="pushup" role="tab" aria-selected="false">
+        <span class="ex-icon">💪</span>
+        <span class="ex-name">Push-up</span>
+        <span class="ex-desc">Range of motion · body line</span>
+      </button>
+      <button class="ex-card" data-ex="curl" role="tab" aria-selected="false">
+        <span class="ex-icon">🦾</span>
+        <span class="ex-name">Bicep curl</span>
+        <span class="ex-desc">Full extension · elbow stability</span>
+      </button>
+      <button class="ex-card" data-ex="jump" role="tab" aria-selected="false">
+        <span class="ex-icon">⛹️</span>
+        <span class="ex-name">Vertical jump</span>
+        <span class="ex-desc">Measure jump height in cm — no equipment</span>
+      </button>
+    </div>
+
+    <div id="jumpCalib" class="jump-calib hidden">
+      <label for="userHeight">Your height (cm) — used to convert pixels to centimetres:</label>
+      <input type="number" id="userHeight" value="170" min="100" max="230" />
+    </div>
+
+    <div class="stage-wrap">
+      <div class="stage">
+        <video id="video" playsinline muted></video>
+        <canvas id="overlay"></canvas>
+        <div id="stageMsg" class="stage-msg">
+          <p>📷 Camera is off</p>
+          <button id="btnCamera" class="btn btn-primary">Enable camera</button>
+        </div>
+        <div id="phaseBadge" class="phase-badge hidden">—</div>
+      </div>
+
+      <aside class="hud">
+        <div class="hud-block hud-reps">
+          <span class="hud-label" id="repLabel">Reps</span>
+          <span class="hud-value" id="repCount">0</span>
+        </div>
+        <div class="hud-block">
+          <span class="hud-label">Form score</span>
+          <div class="score-ring" id="scoreRing" style="--pct:0">
+            <span id="scoreVal">–</span>
+          </div>
+        </div>
+        <div class="hud-block hud-feedback">
+          <span class="hud-label">Live coaching</span>
+          <p id="liveCue" class="live-cue">Waiting for you to start…</p>
+        </div>
+        <div class="hud-actions">
+          <button id="btnSession" class="btn btn-primary" disabled>Start session</button>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <!-- ============ SESSION SUMMARY (injected) ============ -->
+  <section id="summary" class="summary hidden">
+    <h2 class="section-title">Session summary</h2>
+    <div id="summaryCards" class="summary-cards"></div>
+    <p id="summaryCoach" class="coach-note"></p>
+  </section>
+
+  <!-- ============ MULTI-AGENT REPORT ============ -->
+  <section id="report" class="reportsec hidden">
+    <h2 class="section-title">AI Coaching Report</h2>
+    <p class="section-sub">Four specialized agents — Biomechanics, Injury Risk, Programming, Progress — analyze your session in parallel. Every verdict shows its reasoning.</p>
+    <div id="reportBody"></div>
+  </section>
+
+  <!-- ============ PROGRESS ============ -->
+  <section id="progress" class="progress">
+    <h2 class="section-title">Progress</h2>
+    <p class="section-sub">Average form score per session, stored locally on your device.</p>
+    <div class="viz-root">
+      <div class="viz-head">
+        <h3>Form score by session</h3>
+        <button id="tableToggle" class="chip" aria-pressed="false">Table view</button>
+      </div>
+      <div id="chart" class="chart" role="img" aria-label="Line chart of average form score per session"></div>
+      <div id="chartTable" class="chart-table hidden"></div>
+      <p id="chartEmpty" class="chart-empty">No sessions yet — finish a session above and it will show up here.</p>
+    </div>
+  </section>
+
+  <!-- ============ COACH CHAT ============ -->
+  <section id="coach" class="coachsec">
+    <h2 class="section-title">Ask your coach</h2>
+    <p class="section-sub">The coach knows your live session stats. Works offline with a built-in rules coach — or plug in any OpenAI-compatible LLM (e.g. Featherless AI) in settings.</p>
+    <div class="chat">
+      <div id="chatLog" class="chat-log">
+        <div class="msg msg-coach">Hey, I'm your coach. Do a session above, then ask me anything — "how deep were my squats?", "what should I fix first?", "give me a plan for next week".</div>
+      </div>
+      <form id="chatForm" class="chat-form">
+        <input id="chatInput" type="text" placeholder="Ask about your form, your score, your next steps…" autocomplete="off" />
+        <button class="btn btn-primary" type="submit">Send</button>
+        <button type="button" id="btnSettings" class="btn btn-ghost" title="LLM settings">⚙</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- ============ HOW IT WORKS ============ -->
+  <section id="how" class="how">
+    <h2 class="section-title">How it works</h2>
+    <div class="how-grid">
+      <div class="how-card"><span>1</span><h3>Pose estimation</h3><p>Google MediaPipe tracks 33 body landmarks at ~30fps, entirely on your device via WebAssembly + GPU.</p></div>
+      <div class="how-card"><span>2</span><h3>Biomechanics engine</h3><p>Joint angles (hip–knee–ankle, shoulder–elbow–wrist, body line) run through a per-exercise state machine that detects reps and phases.</p></div>
+      <div class="how-card"><span>3</span><h3>Form scoring</h3><p>Each rep starts at 100 and loses points for depth, alignment and stability faults — the same cues a physio checks.</p></div>
+      <div class="how-card"><span>4</span><h3>Voice in, voice out</h3><p>Faults are spoken aloud, and the app listens back — "start", "switch to squats", "how am I doing" — so the entire workout works eyes-free, including for blind and low-vision athletes.</p></div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <p>Built solo in 24 hours for <strong>United Hacks V7</strong> · Sports track · Your camera feed never leaves your browser.</p>
+  </footer>
+
+  <!-- ============ SETTINGS MODAL ============ -->
+  <dialog id="settingsModal" class="modal">
+    <h3>AI coach settings</h3>
+    <p class="modal-sub">Optional. Connect any OpenAI-compatible API. Your key is stored only in this browser (localStorage).</p>
+    <label>Endpoint
+      <input id="cfgEndpoint" type="url" placeholder="https://api.featherless.ai/v1/chat/completions" />
+    </label>
+    <label>Model
+      <input id="cfgModel" type="text" placeholder="meta-llama/Meta-Llama-3.1-8B-Instruct" />
+    </label>
+    <label>API key
+      <input id="cfgKey" type="password" placeholder="sk-…" />
+    </label>
+    <div class="modal-actions">
+      <button id="cfgSave" class="btn btn-primary">Save</button>
+      <button id="cfgClose" class="btn btn-ghost">Close</button>
+    </div>
+  </dialog>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
