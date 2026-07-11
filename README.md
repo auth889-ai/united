@@ -18,7 +18,7 @@ Built solo in under 24 hours for **United Hacks V7** (Sports track).
   by voice: counts you through each set, calls rest periods with a countdown, announces
   the next set
 - **🧑‍🏫 Coach Team Dashboard** — one backend serves a whole squad: every athlete's
-  sessions, form trends, and injury-risk flags in one view (`http://localhost:8001/dashboard`)
+  sessions, form trends, and injury-risk flags in one view (`http://localhost:8001/dashboard?key=coach-demo` — token-gated; set `COACH_KEY` env to change it)
 - **🔒 Live privacy proof** — an on-screen counter of frames analyzed on-device vs
   video bytes uploaded (always 0), plus a local-only mode that sends nothing at all
 - **📐 Live telestration** — broadcast-style joint-angle readouts (knee/elbow degrees)

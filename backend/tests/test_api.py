@@ -48,10 +48,16 @@ def test_analyze_flags_fault_in_injury_report():
 
 
 def test_reports_persist():
-    before = len(client.get("/api/reports?limit=100").json())
+    before = len(client.get("/api/reports?limit=100&key=coach-demo").json())
     client.post("/api/analyze", json={"session": SESSION, "history": []})
-    after = len(client.get("/api/reports?limit=100").json())
+    after = len(client.get("/api/reports?limit=100&key=coach-demo").json())
     assert after == before + 1
+
+
+def test_reports_require_coach_key():
+    assert client.get("/api/reports").status_code == 403
+    assert client.get("/api/reports?key=wrong").status_code == 403
+    assert client.get("/api/reports?key=coach-demo").status_code == 200
 
 
 def test_analyze_rejects_bad_payload():
@@ -67,5 +73,5 @@ def test_dashboard_serves():
 
 def test_reports_carry_athlete():
     client.post("/api/analyze", json={"session": {**SESSION, "athlete": "Test Athlete"}, "history": []})
-    latest = client.get("/api/reports?limit=1").json()[0]
+    latest = client.get("/api/reports?limit=1&key=coach-demo").json()[0]
     assert latest["athlete"] == "Test Athlete"

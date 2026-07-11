@@ -56,7 +56,21 @@ PAGE = """<!DOCTYPE html>
 </div>
 <script>
 const band = s => s >= 85 ? 's-good' : s >= 60 ? 's-warn' : 's-bad';
-fetch('/api/reports?limit=200').then(r => r.json()).then(rows => {
+const key = new URLSearchParams(location.search).get('key') || '';
+fetch('/api/reports?limit=200&key=' + encodeURIComponent(key)).then(r => {
+  if (r.status === 403) {
+    document.getElementById('athletes').innerHTML =
+      `<div class="empty">🔐 Coach access key required.<br><br>
+       <input id="k" type="password" placeholder="coach key"
+         style="background:#1c242f;border:1px solid rgba(255,255,255,.1);border-radius:8px;
+         padding:.5rem .8rem;color:#f4f6f8" />
+       <button onclick="location.search='?key='+encodeURIComponent(document.getElementById('k').value)"
+         style="background:#a3e635;border:none;border-radius:8px;padding:.5rem 1rem;
+         font-weight:700;cursor:pointer;margin-left:.5rem">Unlock</button></div>`;
+    throw new Error('unauthorized');
+  }
+  return r.json();
+}).then(rows => {
   if (!rows.length) {
     document.getElementById('athletes').innerHTML =
       '<div class="empty">No sessions yet — athletes\\' finished sessions will appear here automatically.</div>';
@@ -83,7 +97,7 @@ fetch('/api/reports?limit=200').then(r => r.json()).then(rows => {
       <table><thead><tr><th>When</th><th>Exercise</th><th>Reps</th><th>Form</th><th>Readiness</th><th>Verdict</th></tr></thead>
       <tbody>${rowsHtml}</tbody></table></div>`;
   }).join('');
-});
+}).catch(() => {});
 </script>
 </body>
 </html>"""
