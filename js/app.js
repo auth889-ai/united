@@ -18,6 +18,7 @@ const state = {
   cameraOn: false,
   reps: 0,
   scores: [],
+  repTimes: [],          // performance.now() per completed rep (tempo analytics)
   faults: {},            // cue text -> count
   rafId: null,
   lastVideoTime: -1,
@@ -91,6 +92,21 @@ function loop() {
 /* ================= session logic ================= */
 
 let lastFault = { text: "", at: 0 };
+let fatigueWarned = false;
+
+// Real-life safety: warn when form degrades rep-over-rep (fatigue),
+// before bad reps become injuries.
+function checkFatigue() {
+  const s = state.scores;
+  if (fatigueWarned || s.length < 4) return;
+  const [a, b, c] = s.slice(-3);
+  const avg = s.reduce((x, y) => x + y, 0) / s.length;
+  if (a > b && b > c && c < avg - 10) {
+    fatigueWarned = true;
+    setCue("Fatigue detected — form is dropping. Rest before your next set.", "warn");
+    speak("Your form is dropping. Take a rest before the next set.", { force: true });
+  }
+}
 
 function onFrame(lm) {
   const r = state.analyzer.update(lm);
@@ -113,6 +129,8 @@ function onFrame(lm) {
   if (r.repDone) {
     state.reps++;
     if (r.repScore !== null) state.scores.push(r.repScore);
+    state.repTimes.push(performance.now());
+    checkFatigue();
     $("repCount").textContent = state.reps;
     if (state.exercise === "jump" && state.analyzer.lastJumpCm) {
       speak(`${state.analyzer.lastJumpCm} centimetres`, { force: true });
@@ -141,6 +159,7 @@ function startSession() {
   state.analyzer = EXERCISES[state.exercise].make(() => +$("userHeight").value || 170);
   state.running = true;
   state.reps = 0; state.scores = []; state.faults = {};
+  state.repTimes = []; fatigueWarned = false;
   $("repCount").textContent = "0";
   updateScoreRing();
   $("btnSession").textContent = "Finish session";
@@ -185,8 +204,21 @@ function showSummary(s) {
     { v: Object.values(s.faults).reduce((a, b) => a + b, 0), l: "faults flagged" },
   ];
   if (s.bestJumpCm) cards.push({ v: s.bestJumpCm + " cm", l: "best jump" });
+  const t = state.repTimes;
+  if (t.length >= 2) {
+    const tempo = ((t[t.length - 1] - t[0]) / (t.length - 1) / 1000).toFixed(1);
+    cards.push({ v: tempo + "s", l: "avg rep tempo" });
+  }
   $("summaryCards").innerHTML = cards
     .map((c) => `<div class="sum-card"><b>${c.v}</b><span>${c.l}</span></div>`).join("");
+  // per-rep score strip — a pro-training-log view of the whole set
+  const band = (v) => (v >= 85 ? "good" : v >= 60 ? "warn" : "bad");
+  $("repStrip").innerHTML = state.scores.length
+    ? `<span class="rep-strip-label">Rep-by-rep quality:</span>` +
+      state.scores.map((v, i) =>
+        `<span class="rep-bar" data-band="${band(v)}" title="Rep ${i + 1}: ${v}/100" style="height:${Math.round(6 + v * 0.42)}px"></span>`
+      ).join("")
+    : "";
   $("summaryCoach").textContent = "🎙 Coach: " + summarize(s);
   $("summary").scrollIntoView({ behavior: "smooth", block: "center" });
 }
@@ -338,3 +370,8 @@ $("tableToggle").onclick = () => {
 };
 
 refreshProgress();
+
+// Installable PWA: relative path so it works at both / and /united/ (GitHub Pages)
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}

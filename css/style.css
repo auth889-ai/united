@@ -22,10 +22,16 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html { scroll-behavior: smooth; }
 body {
-  background: var(--bg);
+  background:
+    radial-gradient(900px 500px at 85% -5%, rgba(163, 230, 53, 0.07), transparent 60%),
+    radial-gradient(700px 400px at -10% 30%, rgba(163, 230, 53, 0.04), transparent 60%),
+    var(--bg);
   color: var(--ink);
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
   line-height: 1.55;
+}
+h1, h2, h3, .brand-name, .hud-value, .phase-badge {
+  font-family: "Space Grotesk", system-ui, sans-serif;
 }
 a { color: inherit; }
 button { font: inherit; cursor: pointer; }
@@ -63,7 +69,34 @@ button { font: inherit; cursor: pointer; }
 .hero {
   max-width: var(--maxw); margin: 0 auto;
   padding: 5rem 1.4rem 4rem;
+  display: grid; grid-template-columns: 1.25fr 1fr; gap: 2.5rem; align-items: center;
 }
+@media (max-width: 860px) { .hero { grid-template-columns: 1fr; } .hero-visual { display: none; } }
+
+.hero-visual { display: grid; place-items: center; }
+.mock-stage {
+  position: relative;
+  background: linear-gradient(160deg, var(--surface-2), #0e1319);
+  border: 1px solid var(--border); border-radius: 20px;
+  padding: 2rem 2.4rem 1.2rem;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(163, 230, 53, 0.08);
+  animation: floaty 5s ease-in-out infinite;
+}
+@keyframes floaty { 50% { transform: translateY(-8px); } }
+@media (prefers-reduced-motion: reduce) { .mock-stage { animation: none; } }
+.mock-badge {
+  position: absolute; top: 12px; left: 14px;
+  color: var(--accent); font-size: 0.7rem; font-weight: 800; letter-spacing: 0.12em;
+}
+.mock-skeleton { width: 170px; height: auto; display: block; filter: drop-shadow(0 0 14px rgba(163, 230, 53, 0.35)); }
+.mock-hud { display: flex; gap: 0.5rem; align-items: center; margin-top: 1rem; flex-wrap: wrap; }
+.mock-chip {
+  background: rgba(11, 14, 19, 0.8); border: 1px solid var(--border);
+  border-radius: 8px; padding: 0.25rem 0.6rem; font-size: 0.75rem; color: var(--ink-2);
+}
+.mock-chip b { color: var(--accent); font-size: 0.95rem; }
+.mock-chip-score b { color: var(--good); }
+.mock-cue { color: var(--ink-muted); font-size: 0.72rem; }
 .eyebrow {
   color: var(--accent); font-weight: 700; letter-spacing: 0.12em;
   text-transform: uppercase; font-size: 0.78rem; margin-bottom: 0.9rem;
@@ -83,16 +116,26 @@ button { font: inherit; cursor: pointer; }
 .btn {
   display: inline-block; border: none; border-radius: 10px;
   padding: 0.65rem 1.3rem; font-weight: 700; text-decoration: none;
-  transition: transform 0.08s ease, opacity 0.15s ease;
+  transition: transform 0.12s ease, opacity 0.15s ease, box-shadow 0.2s ease;
 }
 .btn:active { transform: scale(0.97); }
 .btn-primary { background: var(--accent); color: var(--accent-ink); }
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 24px rgba(163, 230, 53, 0.35);
+}
 .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
 .btn-ghost { background: transparent; color: var(--ink-2); border: 1px solid var(--border); }
 .btn-ghost:hover { color: var(--ink); }
 
 /* ---------- sections ---------- */
-.section-title { font-size: 1.6rem; letter-spacing: -0.01em; }
+.section-title { font-size: 1.6rem; letter-spacing: -0.01em; position: relative; padding-left: 0.9rem; }
+.section-title::before {
+  content: ""; position: absolute; left: 0; top: 0.25em; bottom: 0.25em;
+  width: 4px; border-radius: 2px; background: var(--accent);
+}
+.how-card { transition: transform 0.15s ease, box-shadow 0.2s ease; }
+.how-card:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35); }
 .section-sub { color: var(--ink-muted); margin: 0.3rem 0 1.4rem; }
 .app, .progress, .coachsec, .how, .summary {
   max-width: var(--maxw); margin: 0 auto; padding: 3.2rem 1.4rem;
@@ -107,9 +150,14 @@ button { font: inherit; cursor: pointer; }
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius); padding: 1rem; text-align: left;
   display: flex; flex-direction: column; gap: 0.25rem; color: var(--ink);
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition: border-color 0.15s ease, background 0.15s ease,
+    transform 0.15s ease, box-shadow 0.2s ease;
 }
-.ex-card:hover { background: var(--surface-2); }
+.ex-card:hover {
+  background: var(--surface-2);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+}
 .ex-card.selected { border-color: var(--accent); background: var(--surface-2); }
 .ex-icon { font-size: 1.5rem; }
 .ex-name { font-weight: 700; }
@@ -186,6 +234,25 @@ button { font: inherit; cursor: pointer; }
 }
 .sum-card b { display: block; font-size: 1.8rem; }
 .sum-card span { color: var(--ink-muted); font-size: 0.82rem; }
+.rep-strip {
+  display: flex; align-items: flex-end; gap: 4px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 0.8rem 1rem; margin-bottom: 1rem;
+  min-height: 64px;
+}
+.rep-strip:empty { display: none; }
+.rep-strip-label { color: var(--ink-muted); font-size: 0.78rem; margin-right: 0.6rem; align-self: center; }
+.rep-bar {
+  width: 14px; min-height: 6px; max-height: 48px;
+  border-radius: 3px 3px 0 0; background: currentColor;
+}
+.rep-bar[data-band="good"] { color: var(--good); }
+.rep-bar[data-band="warn"] { color: var(--warning); }
+.rep-bar[data-band="bad"]  { color: var(--critical); }
+
+.agent-radar { width: 140px; height: 140px; margin-left: auto; flex-shrink: 0; }
+@media (max-width: 600px) { .agent-radar { display: none; } }
+
 .coach-note {
   background: var(--surface); border-left: 3px solid var(--accent);
   border-radius: 0 var(--radius) var(--radius) 0;

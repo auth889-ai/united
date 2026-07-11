@@ -24,8 +24,10 @@ Built solo in under 24 hours for **United Hacks V7** (Sports track).
 - **Progress tracking** — per-session form scores charted over time (with an accessible table view)
 - **AI coach chat** — a built-in rules coach that knows your session stats, with optional
   bring-your-own-key support for any OpenAI-compatible LLM (e.g. Featherless AI)
+- **Installable PWA** — add it to your home screen like a native app; the shell
+  works offline via a service worker
 - **Privacy by architecture** — inference is on-device (WebAssembly + GPU).
-  **Zero bytes of video ever leave your machine.** There is no backend at all.
+  **Zero bytes of video ever leave your machine.**
 
 - **Multi-agent AI coaching backend** — when you finish a session, your joint-angle
   stats (never video) go to a FastAPI backend where **4 specialized AI agents analyze
