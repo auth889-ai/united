@@ -11,7 +11,11 @@ out loud — 100% in the browser, with zero video ever leaving your device.
 ---
 
 ## Inspiration
-A personal coach costs more per hour than many students spend on food in a week.
+Improper technique causes ~55% of gym injuries, and improper squat form alone
+accounts for ~45% of barbell-related lower-back strains in novice lifters — a
+nationwide study in Bangladesh (where I live) found musculoskeletal injuries
+widespread among gym members. A personal coach would prevent most of this —
+but a coach costs more per hour than many students spend on food in a week.
 So most of us train alone — and train wrong. Bad squat depth, sagging push-up hips,
 swinging curls: these are the exact faults that stall progress and cause the knee
 and back injuries that end amateur sports careers before they start.

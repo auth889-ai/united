@@ -19,7 +19,9 @@ this does it in 20.)*
 
 ## 0:20–0:50 — The problem
 
-> "Most athletes train alone, and training alone means training blind. Bad squat
+> "Improper technique causes roughly **55% of all gym injuries** — squat form
+> alone accounts for nearly half of barbell-related lower-back strains in
+> beginners. Most athletes train alone, and training alone means training blind. Bad squat
 > depth, sagging push-up hips — these faults stall your progress and cause the
 > knee and back injuries that end amateur careers. The problem isn't motivation.
 > It's feedback. Coaches are expensive, wearables are extra hardware, and fitness
