@@ -98,6 +98,29 @@ async function detectOllama() {
   return ollamaDetected;
 }
 
+// Pick a reachable engine: a saved-but-broken ⚙ endpoint must not kill the
+// coach — probe it (4s), then fall back to auto-detected local Ollama.
+async function resolveEngine() {
+  const cfg = getLLMConfig();
+  if (cfg.endpoint && cfg.model) {
+    try {
+      const headers = { "Content-Type": "application/json" };
+      if (cfg.key) headers.Authorization = `Bearer ${cfg.key}`;
+      const probe = await fetch(cfg.endpoint, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ model: cfg.model, max_tokens: 1, messages: [{ role: "user", content: "ping" }] }),
+        signal: AbortSignal.timeout(4000),
+      });
+      if (probe.ok) return { endpoint: cfg.endpoint, model: cfg.model, key: cfg.key || "", label: "🧠 " + cfg.model };
+    } catch { /* unreachable — fall through to local */ }
+  }
+  if (await detectOllama()) {
+    return { endpoint: "http://localhost:11434/v1/chat/completions", model: "llama3.2", key: "", label: "🧠 llama3.2 · local AI" };
+  }
+  return null;
+}
+
 // AI-only: configured LLM -> auto-detected local Ollama. No canned fallback —
 // if no AI engine is reachable, the coach says so honestly.
 const OFFLINE_MSG =
@@ -108,7 +131,7 @@ export async function coachReply(question, history) {
   const cfg = getLLMConfig();
   if (cfg.endpoint && cfg.model) {
     try { return { text: await llmReply(question, history), engine: "🧠 " + cfg.model }; }
-    catch { return { text: OFFLINE_MSG, engine: "offline" }; }
+    catch { /* configured endpoint is down/misconfigured — fall back to local Ollama */ }
   }
   if (await detectOllama()) {
     try {
@@ -167,16 +190,9 @@ export function speakQueued(text) {
 // Streaming reply: sentences are delivered (and can be spoken) AS the model
 // generates them — first words in ~1s instead of waiting for the full answer.
 export async function coachReplyStream(question, history, onSentence) {
-  const cfg = getLLMConfig();
-  let endpoint, model, key;
-  if (cfg.endpoint && cfg.model) ({ endpoint, model, key } = cfg);
-  else if (await detectOllama()) {
-    endpoint = "http://localhost:11434/v1/chat/completions";
-    model = "llama3.2";
-    key = "";
-  } else {
-    return { text: OFFLINE_MSG, engine: "offline" };
-  }
+  const eng = await resolveEngine();
+  if (!eng) return { text: OFFLINE_MSG, engine: "offline" };
+  const { endpoint, model, key } = eng;
 
   const stats = history.slice(-5);
   const headers = { "Content-Type": "application/json" };
@@ -230,7 +246,7 @@ export async function coachReplyStream(question, history, onSentence) {
       }
     }
     flush(true);
-    return { text: full.trim() || OFFLINE_MSG, engine: full ? "🧠 " + (cfg.model || "llama3.2 · local AI · streamed") : "offline" };
+    return { text: full.trim() || OFFLINE_MSG, engine: full ? eng.label + " · streamed" : "offline" };
   } catch {
     return { text: OFFLINE_MSG, engine: "offline" };
   }
@@ -240,14 +256,9 @@ export async function coachReplyStream(question, history, onSentence) {
 // measurement timeline (what happened, when, by how many degrees) and writes
 // a detailed chronological review. Real-time stays physics; depth comes after.
 export async function coachReview(timeline, onSentence) {
-  const cfg = getLLMConfig();
-  let endpoint, model, key;
-  if (cfg.endpoint && cfg.model) ({ endpoint, model, key } = cfg);
-  else if (await detectOllama()) {
-    endpoint = "http://localhost:11434/v1/chat/completions";
-    model = "llama3.2";
-    key = "";
-  } else return null;
+  const eng = await resolveEngine();
+  if (!eng) return null;
+  const { endpoint, model, key } = eng;
 
   const headers = { "Content-Type": "application/json" };
   if (key) headers.Authorization = `Bearer ${key}`;
