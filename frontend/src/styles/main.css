@@ -398,3 +398,26 @@ button { font: inherit; cursor: pointer; }
   display: block; margin-top: 0.4rem;
   font-size: 0.68rem; color: var(--ink-muted);
 }
+
+/* ---------- hero photo with product HUD overlay ---------- */
+.hero-shot {
+  position: relative; border-radius: 20px; overflow: hidden;
+  box-shadow: 0 24px 60px rgba(70, 60, 160, 0.20), 0 0 0 1px rgba(94, 92, 230, 0.12);
+  animation: floaty 5s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) { .hero-shot { animation: none; } }
+.hero-shot img { display: block; width: 100%; height: auto; }
+.hero-shot-badge {
+  position: absolute; top: 12px; left: 14px;
+  background: rgba(20, 18, 40, 0.65); color: #e6e5ff;
+  font-size: 0.7rem; font-weight: 800; letter-spacing: 0.12em;
+  padding: 0.3rem 0.65rem; border-radius: 8px; backdrop-filter: blur(6px);
+}
+.hero-shot-hud {
+  position: absolute; left: 12px; right: 12px; bottom: 12px;
+  display: flex; gap: 0.5rem; flex-wrap: wrap;
+}
+.hero-shot .mock-chip {
+  background: rgba(255, 255, 255, 0.92); backdrop-filter: blur(6px);
+  border: 1px solid rgba(0, 0, 0, 0.06); color: var(--ink-2);
+}
