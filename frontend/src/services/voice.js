@@ -20,6 +20,11 @@ const COMMANDS = [
 
 let rec = null;
 let active = false;
+let bargeIn = false;
+
+// Headphones mode: let the athlete interrupt the coach mid-sentence.
+// Without headphones the coach hears its own voice — keep this off.
+export function setBargeIn(v) { bargeIn = v; }
 
 export function startVoiceControl(onIntent) {
   if (!SR || rec) return false;
@@ -29,8 +34,12 @@ export function startVoiceControl(onIntent) {
   rec.lang = "en-US";
 
   rec.onresult = (e) => {
-    // Ignore the mic while the coach is speaking, or it hears itself.
-    if (speechSynthesis.speaking) return;
+    // Coach speaking? Without headphones we must ignore the mic (echo).
+    // In barge-in mode the athlete's speech interrupts the coach instead.
+    if (speechSynthesis.speaking) {
+      if (!bargeIn) return;
+      speechSynthesis.cancel();
+    }
     const text = e.results[e.results.length - 1][0].transcript.toLowerCase().trim();
     const hit = COMMANDS.find((c) => c.re.test(text));
     if (hit) onIntent(hit.intent, text);

@@ -31,6 +31,7 @@
       <button id="profileChip" class="chip" title="Switch athlete profile">👤 Sign in</button>
       <button id="voiceToggle" class="chip" aria-pressed="true" title="Toggle voice coaching">🔊 Voice on</button>
       <button id="micToggle" class="chip" aria-pressed="false" title="Hands-free voice control — say 'help' for commands">🎤 Voice control</button>
+      <button id="bargeToggle" class="chip" aria-pressed="false" title="Headphones mode: interrupt the coach mid-sentence (needs headphones, or the coach hears itself)">🎧 Barge-in off</button>
     </nav>
   </header>
 
@@ -153,6 +154,8 @@
     <p id="summaryCoach" class="coach-note"></p>
     <p id="coachReview" class="coach-note hidden"></p>
     <button id="btnShare" class="btn btn-ghost" style="margin-top:0.8rem">⬇ Download share card</button>
+    <button id="btnVision" class="btn btn-ghost hidden" style="margin-top:0.8rem">🔍 Deep visual analysis of fault photos</button>
+    <p id="visionReport" class="coach-note hidden"></p>
   </section>
 
   <!-- ============ MULTI-AGENT REPORT ============ -->

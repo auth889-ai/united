@@ -302,3 +302,59 @@ export async function coachReview(timeline, onSentence) {
     return full.trim() || null;
   } catch { return null; }
 }
+
+// Deep visual analysis — sends the fault snapshot IMAGES to a local vision
+// model (via Ollama), which looks at the actual frames and writes a detailed
+// report. Post-session by design: vision models are too slow for live use.
+const VISION_HINTS = /vision|llava|moondream|gemma3|minicpm|qwen2\.5vl|qwen2-vl/i;
+
+export async function findVisionModel() {
+  try {
+    const res = await fetch("http://localhost:11434/api/tags", { signal: AbortSignal.timeout(1500) });
+    const models = (await res.json()).models || [];
+    return models.map((m) => m.name).find((n) => VISION_HINTS.test(n)) || null;
+  } catch { return null; }
+}
+
+export async function visionReport(shots, timeline, onSentence) {
+  const model = await findVisionModel();
+  if (!model) return { error: "no-vision-model" };
+  const images = shots.slice(0, 4).map((s) => s.img.split(",")[1]); // base64 payloads
+  const res = await fetch("http://localhost:11434/api/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model,
+      stream: true,
+      messages: [{
+        role: "user",
+        content:
+          "You are a strength coach reviewing evidence photos from a training session. " +
+          "Each image is the exact moment a form fault was detected (skeleton overlay drawn on the athlete). " +
+          "Fault log with timestamps: " + JSON.stringify(timeline) + ". " +
+          "Describe what you SEE in each image — body position, what is wrong, how to fix it. " +
+          "Be specific and practical, 150 words max, second person.",
+        images,
+      }],
+    }),
+  });
+  if (!res.ok) return { error: `vision ${res.status}` };
+  const reader = res.body.getReader();
+  const dec = new TextDecoder();
+  let buf = "", full = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    const lines = buf.split("\n");
+    buf = lines.pop();
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      try {
+        const chunk = JSON.parse(line).message?.content || "";
+        if (chunk) { full += chunk; onSentence(chunk); }
+      } catch { /* partial */ }
+    }
+  }
+  return { text: full.trim(), model };
+}

@@ -1,7 +1,7 @@
 import { EXERCISES, PRIORITY, LM, angle } from "./engine/exercises.js";
-import { speak, speakRep, speakQueued, setVoice, summarize, coachReply, coachReplyStream, coachReview, liveCoachLine, getLLMConfig, setLLMConfig } from "./services/coach.js";
+import { speak, speakRep, speakQueued, setVoice, summarize, coachReply, coachReplyStream, coachReview, liveCoachLine, visionReport, findVisionModel, getLLMConfig, setLLMConfig } from "./services/coach.js";
 import { renderChart, renderTable } from "./ui/chart.js";
-import { voiceControlSupported, startVoiceControl, stopVoiceControl } from "./services/voice.js";
+import { voiceControlSupported, startVoiceControl, stopVoiceControl, setBargeIn } from "./services/voice.js";
 import { requestReport } from "./ui/report.js";
 import { downloadShareCard } from "./ui/share.js";
 import { demoPose } from "./engine/demo.js";
@@ -588,6 +588,27 @@ async function renderCoachReview(session) {
   }
 }
 
+$("btnVision").onclick = async () => {
+  const box = $("visionReport");
+  box.classList.remove("hidden");
+  const model = await findVisionModel();
+  if (!model) {
+    box.innerHTML = "No local vision model found. Pull one (1.7 GB): <code>ollama pull moondream</code> — then finish another session and click again.";
+    return;
+  }
+  box.textContent = `🔍 ${model} is looking at your fault photos…`;
+  let started = false;
+  const result = await visionReport(
+    state.faultShots,
+    state.faultShots.map(({ at, text }) => ({ atSeconds: at, fault: text })),
+    (chunk) => {
+      if (!started) { started = true; box.textContent = "🔍 Visual analysis: "; }
+      box.textContent += chunk;
+    }
+  );
+  if (result.error) box.textContent = "Visual analysis unavailable: " + result.error;
+};
+
 function showSummary(s) {
   lastSession = s;
   $("summary").classList.remove("hidden");
@@ -613,6 +634,9 @@ function showSummary(s) {
       ).join("")
     : "";
   $("summaryCoach").textContent = "🎙 Coach: " + summarize(s);
+  $("btnVision").classList.toggle("hidden", state.faultShots.length === 0);
+  $("visionReport").classList.add("hidden");
+  $("visionReport").textContent = "";
   $("faultGallery").innerHTML = state.faultShots.length
     ? `<span class="rep-strip-label">📸 Fault evidence (on-device only):</span>` +
       state.faultShots.map((f) =>
@@ -892,6 +916,14 @@ $("localOnly").checked = localStorage.getItem("formcoach.localOnly") === "1";
 $("localOnly").addEventListener("change", () => {
   localStorage.setItem("formcoach.localOnly", $("localOnly").checked ? "1" : "0");
 });
+
+$("bargeToggle").onclick = () => {
+  const on = $("bargeToggle").getAttribute("aria-pressed") !== "true";
+  $("bargeToggle").setAttribute("aria-pressed", on);
+  $("bargeToggle").textContent = on ? "🎧 Barge-in on" : "🎧 Barge-in off";
+  setBargeIn(on);
+  if (on) speak("Barge-in enabled. Wear headphones, and feel free to interrupt me.", { force: true });
+};
 
 $("ghostToggle").onclick = () => {
   state.ghost = !state.ghost;
