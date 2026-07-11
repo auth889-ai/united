@@ -2,7 +2,7 @@
   "name": "FormCoach AI — your AI sports form coach",
   "short_name": "FormCoach",
   "description": "Real-time AI form coaching: pose tracking, rep counting, form scoring and voice coaching, 100% in your browser.",
-  "start_url": ".",
+  "start_url": "app.html",
   "display": "standalone",
   "background_color": "#f5f1f0",
   "theme_color": "#5e5ce6",
