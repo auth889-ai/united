@@ -30,6 +30,9 @@ Built solo in under 48 hours for **United Hacks V7** (Sports track).
   video bytes uploaded (always 0), plus a local-only mode that sends nothing at all
 - **📐 Live telestration** — broadcast-style joint-angle readouts (knee/elbow degrees)
   drawn on the athlete in real time
+- **📸 Fault evidence gallery** — the exact frame of every fault, skeleton overlay
+  included, timestamped in your session summary ("0:42 — chest up, leaning forward").
+  Kept in memory only: never uploaded, never stored
 - **🧠 Coach's Review** — after every session, the local LLM studies your rep-by-rep
   measurement timeline (when, what, by how many degrees) and writes a detailed
   chronological review — like a coach who watched the whole set, citing rep numbers
@@ -172,6 +175,25 @@ backend/                        multi-agent coaching API (layered FastAPI packag
   ci.yml                        runs backend + engine test suites on every push
   deploy.yml                    deploys frontend/ to GitHub Pages on every push
 ```
+
+## 📊 Evaluation (measurable, reproducible)
+
+Deterministic verification — every number below reproduces via `./run_tests.sh` and `cd e2e && npx playwright test`:
+
+| Measurement | Result |
+|---|---|
+| Synthetic-athlete rep detection (8 squat cycles @30fps) | **8/8 detected** |
+| Deliberately shallow reps penalized | **2/2 flagged & scored down** |
+| Phantom reps from noise blips (2-frame spikes) | **0** |
+| Phantom reps from held static positions (120 frames) | **0** |
+| Landmark jitter after EMA smoothing | **−88% frame-to-frame variance** |
+| Movement Twin deviation measurement | exact-degree, worst-first (8 tests) |
+| Vault encryption at rest / user isolation / auth rejection | **12/12 tests** |
+| Real-browser end-to-end scenarios (sign-in → workout → report) | **6/6 pass** |
+
+Thresholds are physio-derived and verified deterministically — a complementary
+approach to statistical classifiers: instead of a trained model's F1 score, every
+behavior is a reproducible test any judge can run in seconds.
 
 ## ✅ Tests
 

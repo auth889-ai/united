@@ -32,6 +32,7 @@ const state = {
   scores: [],
   repTimes: [],          // performance.now() per completed rep (tempo analytics)
   repHistory: [],        // full measurement timeline for the Coach's Review
+  faultShots: [],        // evidence snapshots: the exact frame of each fault
   sessionStart: 0,
   faults: {},            // cue text -> count
   rafId: null,
@@ -333,6 +334,7 @@ function onFrame(lm) {
       if (top.text !== lastFault.text || now - lastFault.at > 3000) {
         state.faults[top.text] = (state.faults[top.text] || 0) + 1;
         lastFault = { text: top.text, at: now };
+        captureFaultShot(top.text);
       }
     }
   }
@@ -350,6 +352,7 @@ function onFrame(lm) {
         setCue(devs[0], "warn");
         speak(devs[0]);
         state.faults[devs[0]] = (state.faults[devs[0]] || 0) + 1;
+        captureFaultShot(devs[0]);
       }
     }
     state.repHistory.push({
@@ -398,6 +401,27 @@ function updateScoreRing() {
     ? Math.round(state.scores.reduce((a, b) => a + b, 0) / state.scores.length) : 0;
   $("scoreVal").textContent = state.scores.length ? avg : "–";
   $("scoreRing").style.setProperty("--pct", avg);
+}
+
+// Evidence snapshot — like a coach photographing the exact moment of a fault.
+// Stays in memory only: never uploaded, never persisted (privacy by default).
+function captureFaultShot(label) {
+  if (state.faultShots.length >= 12) return; // enough evidence, not a film reel
+  const w = 320;
+  const h = Math.round((w * (overlay.height || 3)) / (overlay.width || 4));
+  const c = document.createElement("canvas");
+  c.width = w; c.height = h;
+  const cx = c.getContext("2d");
+  const mirrored = !document.querySelector(".stage").classList.contains("file-mode");
+  if (mirrored) { cx.translate(w, 0); cx.scale(-1, 1); }
+  if (video.videoWidth) cx.drawImage(video, 0, 0, w, h);
+  else { cx.fillStyle = "#141228"; cx.fillRect(0, 0, w, h); }
+  cx.drawImage(overlay, 0, 0, w, h);
+  state.faultShots.push({
+    at: Math.round((performance.now() - state.sessionStart) / 1000),
+    text: label,
+    img: c.toDataURL("image/jpeg", 0.6),
+  });
 }
 
 function setCue(text, cls) {
@@ -470,7 +494,7 @@ function startSession() {
   state.reps = 0; state.scores = []; state.faults = {};
   state.repTimes = []; fatigueWarned = false;
   state.repFrames = []; state.bestRep = null; state.bestRepScore = -1; state.bestMetrics = null; ghostIdx = 0;
-  state.repHistory = []; state.sessionStart = performance.now();
+  state.repHistory = []; state.sessionStart = performance.now(); state.faultShots = [];
   $("repCount").textContent = "0";
   updateScoreRing();
   $("btnSession").textContent = "Finish session";
@@ -544,6 +568,7 @@ async function renderCoachReview(session) {
     averageScore: session.avgScore,
     fatigueDetected: fatigueWarned,
     reps: state.repHistory,
+    faultEvents: state.faultShots.map(({ at, text }) => ({ atSeconds: at, fault: text })),
   };
   let started = false;
   const full = await coachReview(timeline, (sentence) => {
@@ -588,6 +613,13 @@ function showSummary(s) {
       ).join("")
     : "";
   $("summaryCoach").textContent = "🎙 Coach: " + summarize(s);
+  $("faultGallery").innerHTML = state.faultShots.length
+    ? `<span class="rep-strip-label">📸 Fault evidence (on-device only):</span>` +
+      state.faultShots.map((f) =>
+        `<figure class="fault-shot"><img src="${f.img}" alt="fault frame" />
+         <figcaption>${Math.floor(f.at / 60)}:${String(f.at % 60).padStart(2, "0")} — ${f.text}</figcaption></figure>`
+      ).join("")
+    : "";
   renderCoachReview(s);
   $("summary").scrollIntoView({ behavior: "smooth", block: "center" });
 }

@@ -455,3 +455,19 @@ button { font: inherit; cursor: pointer; }
 .statement-sub {
   color: var(--ink-muted); margin: 1.1rem auto 1.6rem; max-width: 34rem;
 }
+
+/* ---------- fault evidence gallery ---------- */
+.fault-gallery {
+  display: flex; gap: 0.8rem; flex-wrap: wrap; align-items: flex-start;
+  margin-bottom: 1rem;
+}
+.fault-gallery:empty { display: none; }
+.fault-shot {
+  width: 180px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; overflow: hidden;
+}
+.fault-shot img { display: block; width: 100%; height: auto; }
+.fault-shot figcaption {
+  padding: 0.4rem 0.55rem; font-size: 0.72rem; color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}

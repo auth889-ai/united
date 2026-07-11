@@ -39,6 +39,9 @@ FormCoach AI watches you train and coaches you in real time:
 - **Scores every rep 0–100** against common form-risk patterns — squat depth, torso
   lean, body-line collapse, elbow drift — and shows a live form-score ring.
   (A coaching aid, not a medical diagnostic tool.)
+- **Fault evidence, photographed.** The moment a fault fires, FormCoach captures
+  that exact frame — skeleton overlay included — into a timestamped evidence gallery
+  in your summary. Like a coach with a camera roll; kept in memory only, never uploaded.
 - **A Coach's Review after every session.** The LLM reads the full rep-by-rep
   measurement timeline — scores, angles, Twin deviations, the fatigue point — and
   writes a chronological review citing rep numbers, timestamps and degrees from the
