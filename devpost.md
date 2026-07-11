@@ -10,7 +10,7 @@ out loud — 100% in the browser, with zero video ever leaving your device.
 
 ---
 
-## Inspiration
+## 💡 Inspiration
 Improper technique causes ~55% of gym injuries, and improper squat form alone
 accounts for ~45% of barbell-related lower-back strains in novice lifters — a
 nationwide study in Bangladesh (where I live) found musculoskeletal injuries
@@ -24,7 +24,7 @@ Meanwhile, the World Cup has millions of people inspired to train right now.
 The gap isn't motivation — it's feedback. I wanted to close that gap with nothing
 but the webcam everyone already owns.
 
-## What it does
+## 🏋️ What it does
 FormCoach AI watches you train and coaches you in real time:
 
 - **Counts reps and detects movement phases** for squats, push-ups and bicep curls
@@ -69,7 +69,7 @@ And the privacy story: **your camera feed never leaves your browser.** Pose
 estimation runs on-device with WebAssembly + GPU; only anonymized joint-angle
 numbers reach the backend. Privacy isn't a policy, it's the architecture.
 
-## How I built it
+## 🛠 How I built it
 
 **Architecture:**
 
@@ -99,7 +99,7 @@ Browser → MediaPipe Pose (on-device WASM+GPU) → Biomechanics engine (rep FSM
 - Optional **LLM coach chat** through any OpenAI-compatible endpoint, with a
   rules-based fallback so the demo always works offline.
 
-## How it's different (yes, rep counters exist — this isn't one)
+## 🤔 How it's different (yes, rep counters exist — this isn't one)
 
 Pose-based rep counters exist on GitHub. Here is what none of them do, and FormCoach does:
 
@@ -115,7 +115,7 @@ Pose-based rep counters exist on GitHub. Here is what none of them do, and FormC
 
 The new idea isn't "detect a squat." It's **turning a webcam into a complete, safe, accessible coaching experience** — feedback, safety, accessibility, and programming in one loop.
 
-## Challenges I ran into
+## ♟️ Challenges I ran into
 - **Rep detection that doesn't double-count.** Raw joint angles are noisy;
   I solved it with hysteresis (different enter/exit thresholds per phase) in each
   state machine.
@@ -123,23 +123,23 @@ The new idea isn't "detect a squat." It's **turning a webcam into a complete, sa
   The trick: calibrate against the athlete's own body — average the standing
   nose-to-ankle length over 30 frames, then use the user's real height as the
   scale factor.
-- **Coaching cadence.** Speaking every fault every frame is unbearable. Cues are
+- **Coaching cadence.** My first version screamed at me every single frame like a fire alarm with opinions. Speaking every fault every frame is unbearable. Cues are
   prioritized (critical > warning > info) and throttled, and a held bad position
   counts as one fault, not hundreds.
 
-## Accomplishments I'm proud of
-- A complete, working, deployed product — built solo in under 24 hours.
+## 🏆 Accomplishments I'm proud of
+- A complete, working, deployed product — built solo. (Teams of three built the past winners. It was just me and a webcam.)
 - Real biomechanics, not an API wrapper: every angle threshold is based on
   published coaching standards (parallel squat depth, neutral body line).
 - Privacy by design, which makes it genuinely usable in bedrooms, school gyms,
   and anywhere else people actually train.
 
-## What I learned
+## 🧠 What I learned
 State machines beat machine-learning classifiers for rep counting when you have
 good landmarks; browser GPU inference is now fast enough for real sports use;
 and voice UX needs as much design as visual UX.
 
-## What's next
+## 🤞 What's next
 - Sport-specific drills: cricket bowling action analysis, football agility drills,
   basketball shooting form.
 - Side-by-side comparison with a pro athlete's reference movement.
