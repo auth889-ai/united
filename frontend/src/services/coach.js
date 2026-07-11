@@ -116,10 +116,14 @@ async function llmReply(question, history, override) {
 }
 
 // Zero-config local AI: if no LLM is configured, auto-detect Ollama running
-// on this machine and use it. Checked once per page load.
+// on this machine. A positive result is cached; a negative one is retried
+// every 15s (Ollama may start after the page loads).
 let ollamaDetected = null;
+let lastCheck = 0;
 async function detectOllama() {
-  if (ollamaDetected !== null) return ollamaDetected;
+  if (ollamaDetected === true) return true;
+  if (ollamaDetected === false && Date.now() - lastCheck < 15000) return false;
+  lastCheck = Date.now();
   try {
     const res = await fetch("http://localhost:11434/api/tags", { signal: AbortSignal.timeout(1500) });
     ollamaDetected = res.ok;
@@ -128,20 +132,22 @@ async function detectOllama() {
 }
 
 // Always answers: configured LLM -> auto-detected local Ollama -> rules coach.
+// Returns {text, engine} so the UI can show exactly what produced the reply.
 export async function coachReply(question, history) {
   const cfg = getLLMConfig();
   if (cfg.endpoint && cfg.model) {
-    try { return await llmReply(question, history); }
-    catch { return "(LLM unreachable — built-in coach) " + ruleReply(question, history); }
+    try { return { text: await llmReply(question, history), engine: "🧠 " + cfg.model }; }
+    catch { return { text: ruleReply(question, history), engine: "📏 rules engine (LLM unreachable)" }; }
   }
   if (await detectOllama()) {
     try {
-      return await llmReply(question, history, {
+      const text = await llmReply(question, history, {
         endpoint: "http://localhost:11434/v1/chat/completions",
         model: "llama3.2",
         key: "",
       });
+      return { text, engine: "🧠 llama3.2 · local AI" };
     } catch { /* fall through to rules */ }
   }
-  return ruleReply(question, history);
+  return { text: ruleReply(question, history), engine: "📏 rules engine" };
 }

@@ -630,7 +630,11 @@ $("chatForm").addEventListener("submit", async (e) => {
   pending.classList.add("thinking");
   const reply = await coachReply(q, mySessions());
   pending.classList.remove("thinking");
-  pending.textContent = reply;
+  pending.textContent = reply.text;
+  const tag = document.createElement("span");
+  tag.className = "msg-engine";
+  tag.textContent = reply.engine;
+  pending.appendChild(tag);
 });
 
 /* ================= settings modal ================= */
@@ -728,8 +732,12 @@ function handleIntent(intent, text) {
       pending.classList.add("thinking");
       coachReply(text, mySessions()).then((reply) => {
         pending.classList.remove("thinking");
-        pending.textContent = reply;
-        speak(reply, { force: true });
+        pending.textContent = reply.text;
+        const tag = document.createElement("span");
+        tag.className = "msg-engine";
+        tag.textContent = reply.engine;
+        pending.appendChild(tag);
+        speak(reply.text, { force: true });
       });
       break;
     }

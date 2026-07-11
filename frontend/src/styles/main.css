@@ -392,3 +392,9 @@ button { font: inherit; cursor: pointer; }
 
 /* ---------- auth ---------- */
 .auth-error { color: var(--critical); font-size: 0.82rem; min-height: 1.2em; margin: -0.3rem 0 0.5rem; }
+
+/* engine tag on chat replies — shows exactly what produced the answer */
+.msg-engine {
+  display: block; margin-top: 0.4rem;
+  font-size: 0.68rem; color: var(--ink-muted);
+}
