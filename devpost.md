@@ -20,7 +20,11 @@ So most of us train alone — and train wrong. Bad squat depth, sagging push-up 
 swinging curls: these are the exact faults that stall progress and cause the knee
 and back injuries that end amateur sports careers before they start.
 
-Meanwhile, the World Cup has millions of people inspired to train right now.
+Meanwhile — exactly as this theme says — the World Cup and LeBron's Lakers exit have
+millions inspired to train right now. FormCoach speaks their language directly: the
+**vertical jump test** is how basketball scouts measure explosiveness (LeBron's was
+legendary), **high knees** are the footballer's core conditioning drill, and the
+**screen-capture analyzer** can coach form on any World Cup training clip on YouTube.
 The gap isn't motivation — it's feedback. I wanted to close that gap with nothing
 but the webcam everyone already owns.
 
