@@ -37,5 +37,15 @@ const held = demoPose(1300); // mid-rep deep position
 for (let i = 0; i < 120; i++) if (squat2.update(held).repDone) reps2++;
 check("no reps counted while holding a static position", reps2 === 0);
 
+// --- anti-blip guard: a 2-frame noise dip must not count as a rep ---
+const squat3 = EXERCISES.squat.make();
+let blipReps = 0;
+const up = demoPose(0);        // standing
+const down = demoPose(1300);   // deep squat
+for (let i = 0; i < 30; i++) if (squat3.update(up).repDone) blipReps++;
+for (let i = 0; i < 2; i++) if (squat3.update(down).repDone) blipReps++;  // 2-frame blip
+for (let i = 0; i < 30; i++) if (squat3.update(up).repDone) blipReps++;
+check("2-frame noise blip does not count as a rep", blipReps === 0);
+
 console.log(failures ? `\n${failures} test(s) FAILED` : "\nALL ENGINE TESTS PASS");
 process.exit(failures ? 1 : 0);

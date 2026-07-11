@@ -52,7 +52,7 @@ const P = { CRITICAL: 3, WARN: 2, INFO: 1 };
 
 class SquatAnalyzer {
   constructor() { this.reset(); }
-  reset() { this.state = "up"; this.minKnee = 180; this.maxLean = 0; this.valgus = false; }
+  reset() { this.state = "up"; this.minKnee = 180; this.maxLean = 0; this.valgus = false; this.downFrames = 0; }
   update(lm) {
     const s = bestSide(lm);
     if (vis(lm, s.hip, s.knee, s.ankle) < 0.5) {
@@ -75,13 +75,16 @@ class SquatAnalyzer {
     }
 
     // Enter "down" at 120° so partial squats still register (and get scored down).
-    if (this.state === "up" && knee < 120) this.state = "down";
+    if (this.state === "up" && knee < 120) { this.state = "down"; this.downFrames = 0; }
     if (this.state === "down") {
+      this.downFrames++;
       this.minKnee = Math.min(this.minKnee, knee);
       this.maxLean = Math.max(this.maxLean, lean);
       if (knee < 115 && this.minKnee > 95) cues.push({ text: "Go a little deeper.", level: P.INFO });
       if (lean > 50) cues.push({ text: "Chest up — you're leaning too far forward.", level: P.CRITICAL });
-      if (knee > 155) { // completed the rep
+      if (knee > 155 && this.downFrames < 6) { // a noise blip, not a rep
+        this.state = "up"; this.minKnee = 180; this.maxLean = 0; this.valgus = false;
+      } else if (knee > 155) { // completed the rep
         this.state = "up";
         repDone = true;
         repScore = 100;
@@ -100,7 +103,7 @@ class SquatAnalyzer {
 
 class PushupAnalyzer {
   constructor() { this.reset(); }
-  reset() { this.state = "up"; this.minElbow = 180; this.worstLine = 180; }
+  reset() { this.state = "up"; this.minElbow = 180; this.worstLine = 180; this.downFrames = 0; }
   update(lm) {
     const s = bestSide(lm);
     if (vis(lm, s.shoulder, s.elbow, s.wrist, s.hip) < 0.5) {
@@ -117,11 +120,14 @@ class PushupAnalyzer {
     if (bodyLine < 155) cues.push({ text: "Hips sagging — squeeze your glutes, straight body line.", level: P.CRITICAL });
 
     // Enter "down" at 115° so shallow push-ups still register (and get scored down).
-    if (this.state === "up" && elbow < 115) this.state = "down";
+    if (this.state === "up" && elbow < 115) { this.state = "down"; this.downFrames = 0; }
     if (this.state === "down") {
+      this.downFrames++;
       this.minElbow = Math.min(this.minElbow, elbow);
       this.worstLine = Math.min(this.worstLine, bodyLine);
-      if (elbow > 150) {
+      if (elbow > 150 && this.downFrames < 6) { // a noise blip, not a rep
+        this.state = "up"; this.minElbow = 180; this.worstLine = 180;
+      } else if (elbow > 150) {
         this.state = "up";
         repDone = true;
         repScore = 100;
@@ -194,7 +200,11 @@ class JumpAnalyzer {
     // Calibrate over the first ~30 stable frames.
     if (this.baseHipY === null) {
       this.samples.push({ hipY, bodyLen: ankleY - lm[LM.NOSE].y });
-      if (this.samples.length >= 30) {
+      // lock calibration only when the athlete is actually standing still
+      if (this.samples.length > 45) this.samples.shift();
+      const ys = this.samples.map((v) => v.hipY);
+      const stable = this.samples.length >= 30 && Math.max(...ys) - Math.min(...ys) < 0.015;
+      if (stable) {
         this.baseHipY = this.samples.reduce((s, v) => s + v.hipY, 0) / this.samples.length;
         this.bodyLen = this.samples.reduce((s, v) => s + v.bodyLen, 0) / this.samples.length;
         cues.push({ text: "Calibrated. Jump as high as you can!", level: P.INFO });
