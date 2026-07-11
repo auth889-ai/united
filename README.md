@@ -54,7 +54,7 @@ Video never leaves the browser — only anonymized joint-angle stats reach the b
 **Frontend** (no build step — any static server):
 
 ```bash
-python3 -m http.server 8000
+python3 -m http.server 8000 --directory frontend
 # open http://localhost:8000
 ```
 
@@ -63,7 +63,7 @@ python3 -m http.server 8000
 **Backend** (multi-agent coaching report):
 
 ```bash
-cd server
+cd backend
 pip install -r requirements.txt
 export ANTHROPIC_API_KEY=sk-...   # optional — falls back to rules engine without it
 uvicorn main:app --port 8001
@@ -97,16 +97,20 @@ Pydantic-validated structured outputs) · SQLite.
 ## 📁 Structure
 
 ```
-index.html            app shell + landing
-css/style.css         dark athletic theme
-js/app.js             camera, inference loop, session lifecycle, UI
-js/exercises.js       angle math + per-exercise analyzers (the biomechanics engine)
-js/coach.js           voice cues, session summaries, chat coach (+ optional LLM)
-js/voice.js           hands-free voice control (speech recognition + command grammar)
-js/report.js          multi-agent AI coaching report panel
-js/chart.js           progress chart (accessible: tooltips, table view, direct labels)
-server/main.py        FastAPI backend — 4 parallel AI agents + SQLite
-server/requirements.txt
+frontend/                     static web app (deployed to GitHub Pages by CI)
+  index.html                  app shell + landing
+  manifest.json · sw.js       installable PWA + offline service worker
+  css/style.css               dark athletic design system
+  js/app.js                   camera, inference loop, session lifecycle, UI
+  js/exercises.js             angle math + per-exercise analyzers (biomechanics engine)
+  js/coach.js                 voice cues, session summaries, chat coach (+ optional LLM)
+  js/voice.js                 hands-free voice control (speech recognition grammar)
+  js/report.js                multi-agent AI coaching report (radar chart)
+  js/chart.js                 progress chart (tooltips, table view, direct labels)
+backend/                      multi-agent coaching API
+  main.py                     FastAPI — 4 parallel AI agents + SQLite
+  requirements.txt
+.github/workflows/deploy.yml  CI/CD — auto-deploys frontend to GitHub Pages on push
 ```
 
 ## ⚖️ License & credits

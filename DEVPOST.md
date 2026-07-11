@@ -68,7 +68,7 @@ Browser → MediaPipe Pose (on-device WASM+GPU) → Biomechanics engine (rep FSM
 - **A biomechanics engine I wrote from scratch** (`js/exercises.js`): vector math
   for joint angles, per-exercise finite-state machines for rep detection, and a
   fault-deduction scoring model.
-- **Multi-agent backend** (`server/main.py`): FastAPI + `asyncio.gather` runs four
+- **Multi-agent backend** (`backend/main.py`): FastAPI + `asyncio.gather` runs four
   specialized Claude agents concurrently, each constrained to Pydantic-validated
   structured output (score / findings / reasoning), synthesized into an overall
   readiness score and persisted in SQLite. A deterministic rules engine mirrors
@@ -120,6 +120,6 @@ and voice UX needs as much design as visual UX.
 - [ ] Public GitHub repo — push this repo and paste the link
 - [ ] Demo video 2–5 min — script in VIDEO_SCRIPT.md, upload to YouTube (unlisted is fine)
 - [ ] Written explanation — the sections above, pasted into Devpost
-- [ ] Live demo link — deploy with GitHub Pages (Settings → Pages → main branch → root)
+- [ ] Live demo link — https://auth889-ai.github.io/united/ (auto-deployed by GitHub Actions CI on every push)
 - [ ] Enter the **Theme (Sports) track** — required for Best Solo Hack eligibility
 - [ ] Disclose AI-assisted development honestly in the write-up if the rules ask

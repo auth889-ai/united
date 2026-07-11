@@ -20,7 +20,7 @@ export async function requestReport(session, history) {
   } catch {
     body.innerHTML =
       `<p class="report-status">Backend offline — the live demo still works fully in-browser. ` +
-      `To enable the multi-agent report, run:<br><code>cd server && pip install -r requirements.txt && uvicorn main:app --port 8001</code></p>`;
+      `To enable the multi-agent report, run:<br><code>cd backend && pip install -r requirements.txt && uvicorn main:app --port 8001</code></p>`;
   }
 }
 
