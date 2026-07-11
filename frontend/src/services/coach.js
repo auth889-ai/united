@@ -91,9 +91,11 @@ export function setLLMConfig(cfg) { localStorage.setItem(CFG_KEY, JSON.stringify
 async function llmReply(question, history) {
   const cfg = getLLMConfig();
   const stats = history.slice(-5);
+  const headers = { "Content-Type": "application/json" };
+  if (cfg.key) headers.Authorization = `Bearer ${cfg.key}`; // Ollama needs no key
   const res = await fetch(cfg.endpoint, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${cfg.key}` },
+    headers,
     body: JSON.stringify({
       model: cfg.model,
       max_tokens: 300,
@@ -116,7 +118,7 @@ async function llmReply(question, history) {
 // Always answers: tries the LLM when configured, falls back to rules.
 export async function coachReply(question, history) {
   const cfg = getLLMConfig();
-  if (cfg.endpoint && cfg.key && cfg.model) {
+  if (cfg.endpoint && cfg.model) {
     try { return await llmReply(question, history); }
     catch { return "(LLM unreachable — built-in coach) " + ruleReply(question, history); }
   }

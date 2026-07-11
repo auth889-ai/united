@@ -52,8 +52,9 @@ Built solo in under 48 hours for **United Hacks V7** (Sports track).
   the first workout coach that **blind and low-vision athletes can use entirely eyes-free**
   (Chrome/Edge)
 - **Progress tracking** — per-session form scores charted over time (with an accessible table view)
-- **AI coach chat** — a built-in rules coach that knows your session stats, with optional
-  bring-your-own-key support for any OpenAI-compatible LLM (e.g. Featherless AI)
+- **AI coach chat** — a built-in rules coach that knows your session stats; optionally plug
+  in **Ollama** (`http://localhost:11434/v1/chat/completions`, model `llama3.2`, no key —
+  a fully local, private LLM) or any OpenAI-compatible API (e.g. Featherless AI)
 - **Installable PWA** — add it to your home screen like a native app; the shell
   works offline via a service worker
 - **Privacy by architecture** — inference is on-device (WebAssembly + GPU).
