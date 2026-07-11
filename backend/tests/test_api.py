@@ -7,6 +7,7 @@ from pathlib import Path
 # Tests must be deterministic: force the rules engine regardless of any
 # local Ollama server or API key.
 os.environ["OLLAMA_URL"] = "http://localhost:9"
+os.environ["FORMCOACH_ALLOW_RULES"] = "1"  # deterministic engine for CI only
 os.environ.pop("ANTHROPIC_API_KEY", None)
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))

@@ -25,9 +25,12 @@ def health() -> dict:
 @router.post("/analyze")
 async def analyze(req: AnalyzeRequest) -> dict:
     # All four agents run in parallel — one slow agent never blocks the others.
-    results = await asyncio.gather(
-        *(agents.run_agent(a, req.session, req.history) for a in agents.AGENTS)
-    )
+    try:
+        results = await asyncio.gather(
+            *(agents.run_agent(a, req.session, req.history) for a in agents.AGENTS)
+        )
+    except agents.NoEngineError as err:
+        raise HTTPException(status_code=503, detail=str(err))
     overall = round(sum(a["score"] for a in results) / len(results))
     report = {
         "overall": overall,

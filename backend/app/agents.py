@@ -86,7 +86,9 @@ def engine_name() -> str:
         return "claude"
     if _ollama:
         return f"ollama:{OLLAMA_MODEL}"
-    return "rules"
+    if os.environ.get("FORMCOACH_ALLOW_RULES") == "1":
+        return "rules"
+    return "offline"
 
 
 async def ollama_report(agent: dict, session: Session, history: list[Session]) -> AgentReport:
@@ -181,23 +183,26 @@ async def llm_report(agent: dict, session: Session, history: list[Session]) -> A
     return response.parsed_output
 
 
+class NoEngineError(RuntimeError):
+    """Raised when no AI engine is reachable (AI-only mode)."""
+
+
 async def run_agent(agent: dict, session: Session, history: list[Session]) -> dict:
     report: AgentReport
     engine = "rules"
     if _client is not None:
-        try:
-            report = await llm_report(agent, session, history)
-            engine = "claude"
-        except (anthropic.APIError, anthropic.APIConnectionError):
-            report = rules_report(agent, session, history)
+        report = await llm_report(agent, session, history)
+        engine = "claude"
     elif _ollama:
-        try:
-            report = await ollama_report(agent, session, history)
-            engine = f"ollama:{OLLAMA_MODEL}"
-        except Exception:
-            report = rules_report(agent, session, history)
-    else:
+        report = await ollama_report(agent, session, history)
+        engine = f"ollama:{OLLAMA_MODEL}"
+    elif os.environ.get("FORMCOACH_ALLOW_RULES") == "1":
+        # deterministic engine retained for CI test determinism only
         report = rules_report(agent, session, history)
+    else:
+        raise NoEngineError(
+            "AI engine offline — start Ollama (ollama serve) or set ANTHROPIC_API_KEY."
+        )
     return {
         "key": agent["key"],
         "icon": agent["icon"],

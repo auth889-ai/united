@@ -15,6 +15,10 @@ export async function requestReport(session, history) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ session, history }),
     });
+    if (res.status === 503) {
+      body.innerHTML = `<p class="report-status">⚠ AI engine offline — start Ollama (<code>ollama serve</code>, model llama3.2) or set <code>ANTHROPIC_API_KEY</code>, then finish another session.</p>`;
+      return;
+    }
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     render(body, await res.json());
   } catch {

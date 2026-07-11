@@ -47,39 +47,6 @@ export function summarize(session) {
   return parts.join(" ");
 }
 
-/* ---------------- rule-based chat coach ---------------- */
-
-function ruleReply(question, history) {
-  const q = question.toLowerCase();
-  const last = history[history.length - 1];
-  if (!last) {
-    return "I don't have any session data yet — do a set above (even 5 squats), then ask me again and I'll coach you on the numbers.";
-  }
-  const statLine = last.exercise === "Vertical jump"
-    ? `your last session: ${last.reps} jumps, best ${last.bestJumpCm} cm`
-    : `your last session: ${last.reps} ${last.exercise.toLowerCase()} reps at ${last.avgScore}/100 form`;
-
-  if (/(score|form|how.*(do|did)|rate)/.test(q)) {
-    return `Here's ${statLine}. ${last.avgScore >= 85 ? "That's strong — your movement is consistent." : "The score drops mainly when you cut range of motion or lose alignment — slow down 20% and the score will climb."}`;
-  }
-  if (/(fix|improve|better|mistake|wrong|fault)/.test(q)) {
-    const top = Object.entries(last.faults || {}).sort((a, b) => b[1] - a[1])[0];
-    return top
-      ? `Your #1 issue was "${top[0]}" — it happened ${top[1]} time${top[1] === 1 ? "" : "s"}. Focus your entire next set on just that one cue. One fault at a time is how form actually changes.`
-      : `Honestly, no repeated faults last session (${statLine}). Add 2–3 reps or slow the lowering phase to keep progressing.`;
-  }
-  if (/(plan|week|program|next|routine|schedule)/.test(q)) {
-    return `Based on ${statLine}: train 3×/week — Day 1: 3 sets of ${last.exercise.toLowerCase()}s at a quality you can hold above 85/100. Day 2: a different drill from the picker. Day 3: repeat Day 1 and try to beat your average by 5 points. Progress by score first, reps second.`;
-  }
-  if (/(jump|vertical|higher)/.test(q)) {
-    return "To jump higher: squat depth builds the engine, and explosive intent builds the spring. Do 3×5 deep squats, then 3×3 max-effort jumps fully rested. Re-test here weekly — the chart below will show the trend.";
-  }
-  if (/(injur|pain|hurt|knee|back)/.test(q)) {
-    return "If anything actually hurts, stop and see a professional — I coach form, I don't diagnose. That said, most knee/back complaints in training come from the exact faults I flag: knees caving, chest dropping, hips sagging. Keep your score above 85 and you're moving well.";
-  }
-  return `Good question. Here's ${statLine}. Ask me to "rate my form", "what should I fix", or "give me a plan" — or open ⚙ settings to plug in an LLM for open-ended coaching.`;
-}
-
 /* ---------------- optional LLM (OpenAI-compatible, e.g. Featherless) ---------------- */
 
 const CFG_KEY = "formcoach.llm";
@@ -131,13 +98,17 @@ async function detectOllama() {
   return ollamaDetected;
 }
 
-// Always answers: configured LLM -> auto-detected local Ollama -> rules coach.
-// Returns {text, engine} so the UI can show exactly what produced the reply.
+// AI-only: configured LLM -> auto-detected local Ollama. No canned fallback —
+// if no AI engine is reachable, the coach says so honestly.
+const OFFLINE_MSG =
+  "⚠ AI coach offline. Start Ollama on this machine (ollama serve, model llama3.2) " +
+  "or add an API key in ⚙ settings — then ask me again.";
+
 export async function coachReply(question, history) {
   const cfg = getLLMConfig();
   if (cfg.endpoint && cfg.model) {
     try { return { text: await llmReply(question, history), engine: "🧠 " + cfg.model }; }
-    catch { return { text: ruleReply(question, history), engine: "📏 rules engine (LLM unreachable)" }; }
+    catch { return { text: OFFLINE_MSG, engine: "offline" }; }
   }
   if (await detectOllama()) {
     try {
@@ -147,7 +118,7 @@ export async function coachReply(question, history) {
         key: "",
       });
       return { text, engine: "🧠 llama3.2 · local AI" };
-    } catch { /* fall through to rules */ }
+    } catch { return { text: OFFLINE_MSG, engine: "offline" }; }
   }
-  return { text: ruleReply(question, history), engine: "📏 rules engine" };
+  return { text: OFFLINE_MSG, engine: "offline" };
 }
