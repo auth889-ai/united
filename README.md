@@ -19,6 +19,9 @@ Built solo in under 24 hours for **United Hacks V7** (Sports track).
   the next set
 - **🧑‍🏫 Coach Team Dashboard** — one backend serves a whole squad: every athlete's
   sessions, form trends, and injury-risk flags in one view (`http://localhost:8001/dashboard?key=coach-demo` — token-gated; set `COACH_KEY` env to change it)
+- **👤 Athlete sign-in (local profiles)** — a real sign-in screen, but passwordless by
+  design: profiles live on the device, so a family or a whole gym can share one machine
+  with separate histories — and there is no account database to breach
 - **🔒 Live privacy proof** — an on-screen counter of frames analyzed on-device vs
   video bytes uploaded (always 0), plus a local-only mode that sends nothing at all
 - **📐 Live telestration** — broadcast-style joint-angle readouts (knee/elbow degrees)

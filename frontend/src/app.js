@@ -380,7 +380,7 @@ function finishSession() {
   const session = {
     date: new Date().toISOString(),
     shortDate: new Date().toLocaleDateString(undefined, { month: "short", day: "numeric" }),
-    athlete: localStorage.getItem("formcoach.athlete") || "Solo athlete",
+    athlete: athleteName() || "Solo athlete",
     exercise: EXERCISES[state.exercise].name,
     reps: state.reps,
     avgScore: avg,
@@ -398,7 +398,7 @@ function finishSession() {
     if (localOnly()) {
       document.getElementById("report").classList.add("hidden");
     } else {
-      requestReport(session, all);
+      requestReport(session, mySessions());
     }
   } else {
     setCue("Session ended — no reps recorded.", "warn");
@@ -442,6 +442,31 @@ function loadSessions() {
   try { return JSON.parse(localStorage.getItem("formcoach.sessions")) || []; } catch { return []; }
 }
 
+/* ---------- athlete profiles: local sign-in, per-athlete history ---------- */
+
+const athleteName = () => localStorage.getItem("formcoach.athlete") || "";
+
+// Sessions belonging to the signed-in athlete (legacy sessions count as theirs).
+const mySessions = () =>
+  loadSessions().filter((s) => !s.athlete || s.athlete === athleteName());
+
+function setAthlete(name) {
+  localStorage.setItem("formcoach.athlete", name);
+  $("profileChip").textContent = "👤 " + name;
+  refreshProgress();
+}
+
+$("welcomeGo").onclick = () => {
+  setAthlete($("welcomeName").value.trim() || "Athlete");
+  $("welcomeModal").close();
+};
+$("profileChip").onclick = () => {
+  $("welcomeName").value = athleteName();
+  $("welcomeModal").showModal();
+};
+if (!athleteName()) $("welcomeModal").showModal();
+else $("profileChip").textContent = "👤 " + athleteName();
+
 // Gamification: training streak + personal records from local history.
 function renderStreaks(sessions) {
   const el = $("streakTiles");
@@ -468,7 +493,7 @@ function renderStreaks(sessions) {
 }
 
 function refreshProgress() {
-  const sessions = loadSessions();
+  const sessions = mySessions();
   $("chartEmpty").classList.toggle("hidden", sessions.length > 0);
   renderStreaks(sessions);
   renderChart($("chart"), sessions);
@@ -494,7 +519,7 @@ $("chatForm").addEventListener("submit", async (e) => {
   addMsg(q, "user");
   const pending = addMsg("thinking…", "coach");
   pending.classList.add("thinking");
-  const reply = await coachReply(q, loadSessions());
+  const reply = await coachReply(q, mySessions());
   pending.classList.remove("thinking");
   pending.textContent = reply;
 });
@@ -511,7 +536,7 @@ $("btnSettings").onclick = () => {
 };
 $("cfgSave").onclick = () => {
   const name = $("cfgName").value.trim();
-  if (name) localStorage.setItem("formcoach.athlete", name);
+  if (name) setAthlete(name);
   setLLMConfig({
     endpoint: $("cfgEndpoint").value.trim(),
     model: $("cfgModel").value.trim(),

@@ -27,6 +27,7 @@
       <a href="#train">Train</a>
       <a href="#progress">Progress</a>
       <a href="#coach">Coach</a>
+      <button id="profileChip" class="chip" title="Switch athlete profile">👤 Sign in</button>
       <button id="voiceToggle" class="chip" aria-pressed="true" title="Toggle voice coaching">🔊 Voice on</button>
       <button id="micToggle" class="chip" aria-pressed="false" title="Hands-free voice control — say 'help' for commands">🎤 Voice control</button>
     </nav>
@@ -237,6 +238,19 @@
   <footer class="footer">
     <p>Built solo in 24 hours for <strong>United Hacks V7</strong> · Sports track · Your camera feed never leaves your browser.</p>
   </footer>
+
+  <!-- ============ ATHLETE SIGN-IN ============ -->
+  <dialog id="welcomeModal" class="modal">
+    <h3>👤 Athlete sign-in</h3>
+    <p class="modal-sub">Profiles are local to this device — no account, no password, no server.
+      Each athlete gets their own history, streaks, and coaching. Your data stays yours.</p>
+    <label>Your name
+      <input id="welcomeName" type="text" placeholder="e.g. Jannatul" autocomplete="off" />
+    </label>
+    <div class="modal-actions">
+      <button id="welcomeGo" class="btn btn-primary">Start training →</button>
+    </div>
+  </dialog>
 
   <!-- ============ SETTINGS MODAL ============ -->
   <dialog id="settingsModal" class="modal">
