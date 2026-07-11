@@ -47,8 +47,9 @@ Built solo in under 48 hours for **United Hacks V7** (Sports track).
   EMA-smoothed for stable angles and a steady skeleton overlay
 - **Biomechanics engine** — joint-angle state machines detect reps and phases; each rep
   is scored against common form-risk patterns (depth, body line, elbow drift, torso lean)
-- **Voice coaching** — the highest-priority fault is spoken via the Web Speech API, so you
-  never look at the screen mid-set
+- **Voice coaching, two layers** — instant physics cues for safety (spoken via Web Speech
+  API), plus a **live AI commentator**: every few reps, a local LLM reacts to what the
+  vision engine just measured — fresh spoken lines, never the same twice
 - **Hands-free voice control AND conversation** — say "squats", "start", "finish" and the
   app obeys; ask it anything else ("what should I fix first?", "give me a plan") and the
   coach **answers out loud**. Designed for **complete eyes-free operation**, so blind and

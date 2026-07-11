@@ -122,3 +122,35 @@ export async function coachReply(question, history) {
   }
   return { text: OFFLINE_MSG, engine: "offline" };
 }
+
+// Live AI commentary — short spoken lines generated from what the vision
+// engine is seeing right now (reps, scores, Twin deviations, fatigue).
+// Fires only when a local LLM is available; never blocks the video loop.
+let liveBusy = false;
+export async function liveCoachLine(snapshot) {
+  if (liveBusy || !(await detectOllama())) return null;
+  liveBusy = true;
+  try {
+    const res = await fetch("http://localhost:11434/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "llama3.2",
+        max_tokens: 40,
+        messages: [
+          { role: "system", content:
+            "You are a live workout voice coach. Reply with ONE short spoken line, " +
+            "under 18 words, energetic and specific to the JSON data. No emojis, no quotes." },
+          { role: "user", content: JSON.stringify(snapshot) },
+        ],
+      }),
+      signal: AbortSignal.timeout(6000),
+    });
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content?.trim() || null;
+  } catch {
+    return null;
+  } finally {
+    liveBusy = false;
+  }
+}

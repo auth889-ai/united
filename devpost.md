@@ -38,6 +38,9 @@ FormCoach AI watches you train and coaches you in real time:
 - **Scores every rep 0–100** against common form-risk patterns — squat depth, torso
   lean, body-line collapse, elbow drift — and shows a live form-score ring.
   (A coaching aid, not a medical diagnostic tool.)
+- **A live AI commentator.** Every few reps, a local LLM (Ollama) reacts to what the
+  vision engine just measured — rep score, Twin deviation, fatigue state — and speaks a
+  fresh line. Instant physics cues handle safety; the AI adds the human touch.
 - **Speaks corrections out loud** ("Chest up — you're leaning too far forward")
   via the Web Speech API, prioritized by injury risk, so you never look at a
   screen mid-set.

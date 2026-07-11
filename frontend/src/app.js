@@ -1,5 +1,5 @@
 import { EXERCISES, PRIORITY, LM, angle } from "./engine/exercises.js";
-import { speak, speakRep, setVoice, summarize, coachReply, getLLMConfig, setLLMConfig } from "./services/coach.js";
+import { speak, speakRep, setVoice, summarize, coachReply, liveCoachLine, getLLMConfig, setLLMConfig } from "./services/coach.js";
 import { renderChart, renderTable } from "./ui/chart.js";
 import { voiceControlSupported, startVoiceControl, stopVoiceControl } from "./services/voice.js";
 import { requestReport } from "./ui/report.js";
@@ -339,9 +339,11 @@ function onFrame(lm) {
     if (r.repScore !== null) state.scores.push(r.repScore);
     state.repTimes.push(performance.now());
     // Movement Twin: measure this rep against the athlete's own best
+    let twinDeviation = null;
     if (state.bestMetrics && r.repMetrics && r.repScore < state.bestRepScore) {
       const devs = compareToBaseline(state.exercise, state.bestMetrics, r.repMetrics);
       if (devs.length) {
+        twinDeviation = devs[0];
         setCue(devs[0], "warn");
         speak(devs[0]);
         state.faults[devs[0]] = (state.faults[devs[0]] || 0) + 1;
@@ -349,6 +351,22 @@ function onFrame(lm) {
     }
     maybeSaveBestRep(r.repScore, r.repMetrics);
     checkFatigue();
+    // Live AI commentary every 3rd rep — the LLM reacts to what the vision
+    // engine just measured, spoken moments later without blocking the loop.
+    if (state.reps % 3 === 0) {
+      const avg = state.scores.length
+        ? Math.round(state.scores.reduce((x, y) => x + y, 0) / state.scores.length) : null;
+      liveCoachLine({
+        exercise: EXERCISES[state.exercise].name,
+        repJustCompleted: state.reps,
+        lastRepScore: r.repScore,
+        sessionAverage: avg,
+        vsPersonalBest: twinDeviation || "matching their best",
+        fatigueWarning: fatigueWarned,
+      }).then((line) => {
+        if (line && state.running) { speak(line); setCue("🧠 " + line, "good"); }
+      });
+    }
     $("repCount").textContent = state.reps;
     if (state.exercise === "jump" && state.analyzer.lastJumpCm) {
       speak(`${state.analyzer.lastJumpCm} centimetres`, { force: true });
