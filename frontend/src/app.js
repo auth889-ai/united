@@ -5,6 +5,7 @@ import { voiceControlSupported, startVoiceControl, stopVoiceControl } from "./se
 import { requestReport } from "./ui/report.js";
 import { downloadShareCard } from "./ui/share.js";
 import { demoPose } from "./engine/demo.js";
+import { createSmoother } from "./engine/smooth.js";
 import { register, signIn, signOut, resume, currentUser, loadVault, saveVault } from "./services/auth.js";
 import {
   PoseLandmarker, FilesetResolver, DrawingUtils,
@@ -43,7 +44,7 @@ async function loadModel() {
   state.landmarker = await PoseLandmarker.createFromOptions(vision, {
     baseOptions: {
       modelAssetPath:
-        "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
+        "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task",
       delegate: "GPU",
     },
     runningMode: "VIDEO",
@@ -108,6 +109,7 @@ async function analyzeVideoFile(file) {
 
 const drawer = () => new DrawingUtils(ctx);
 let drawingUtils = null;
+const smoother = createSmoother();
 
 /* ---------- telestration: live joint-angle readouts on the athlete ---------- */
 
@@ -209,7 +211,8 @@ function loop() {
     const result = state.landmarker.detectForVideo(video, performance.now());
     countFrame();
     ctx.clearRect(0, 0, overlay.width, overlay.height);
-    const lm = result.landmarks?.[0];
+    const raw = result.landmarks?.[0];
+    const lm = raw ? smoother.smooth(raw) : (smoother.reset(), null);
     if (lm) {
       if (!drawingUtils) drawingUtils = drawer();
       drawGhost();

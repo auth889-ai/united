@@ -37,7 +37,8 @@ Built solo in under 24 hours for **United Hacks V7** (Sports track).
   see the AI coaching live in 5 seconds
 - **4 drills**: Squat · Push-up · Bicep curl · **Vertical jump test** (measures your
   jump height in centimetres with no equipment — just your height for calibration)
-- **Real-time pose tracking** — 33 body landmarks at ~30fps, drawn as a live skeleton overlay
+- **Real-time pose tracking** — 33 body landmarks at ~30fps (MediaPipe **full** model),
+  EMA-smoothed for stable angles and a steady skeleton overlay
 - **Biomechanics engine** — joint-angle state machines detect reps and phases; each rep
   is scored against the same faults a physio checks (depth, body line, elbow drift, torso lean)
 - **Voice coaching** — the highest-priority fault is spoken via the Web Speech API, so you
@@ -158,6 +159,7 @@ backend/                        multi-agent coaching API (layered FastAPI packag
 pytest backend/tests -v              # 8 API tests
 node frontend/tests/engine.test.mjs  # 7 biomechanics engine tests
 node frontend/tests/auth.test.mjs    # 12 zero-knowledge auth tests
+node frontend/tests/smooth.test.mjs  # 4 landmark-filter tests
 ```
 
 Both suites run automatically in CI on every push.
