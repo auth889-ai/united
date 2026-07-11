@@ -1,11 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-  <rect width="128" height="128" rx="28" fill="#0b0e13"/>
-  <g fill="none" stroke="#a3e635" stroke-width="6" stroke-linecap="round">
-    <circle cx="64" cy="34" r="10" fill="#a3e635" stroke="none"/>
+  <rect width="128" height="128" rx="28" fill="#5e5ce6"/>
+  <g fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round">
+    <circle cx="64" cy="34" r="10" fill="#ffffff" stroke="none"/>
     <path d="M64 46 L64 74"/>
     <path d="M64 52 L42 66 M64 52 L86 66"/>
     <path d="M64 74 L48 100 M64 74 L80 100"/>
   </g>
-  <circle cx="98" cy="98" r="18" fill="#a3e635"/>
-  <text x="98" y="105" font-family="system-ui,sans-serif" font-size="20" font-weight="800" fill="#0b0e13" text-anchor="middle">AI</text>
+  <circle cx="98" cy="98" r="18" fill="#ffffff"/>
+  <text x="98" y="105" font-family="system-ui,sans-serif" font-size="20" font-weight="800" fill="#5e5ce6" text-anchor="middle">AI</text>
 </svg>

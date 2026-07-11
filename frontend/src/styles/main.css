@@ -1,20 +1,20 @@
 /* ============ FormCoach AI — dark athletic theme ============ */
 :root {
-  --bg: #0b0e13;            /* page plane */
-  --surface: #151b23;       /* cards / chart surface */
-  --surface-2: #1c242f;
-  --border: rgba(255, 255, 255, 0.08);
-  --ink: #f4f6f8;
-  --ink-2: #b7c0ca;
-  --ink-muted: #8a939d;
-  --accent: #a3e635;        /* UI accent (buttons, highlights) */
-  --accent-ink: #0b0e13;    /* text on accent */
-  --series-1: #65a30d;      /* chart series — validated vs surface */
-  --grid: #2a323d;
-  --baseline: #3a434f;
-  --good: #0ca30c;
-  --warning: #fab219;
-  --critical: #d03b3b;
+  --bg: #f5f1f0;            /* warm off-white page plane */
+  --surface: #ffffff;       /* cards / chart surface */
+  --surface-2: #f2f0fa;
+  --border: rgba(0, 0, 0, 0.08);
+  --ink: #1d1d1f;
+  --ink-2: #4b4b54;
+  --ink-muted: #86868b;
+  --accent: #5e5ce6;        /* indigo accent — validated on white */
+  --accent-ink: #ffffff;    /* text on accent */
+  --series-1: #5e5ce6;      /* chart series — validated vs surface */
+  --grid: #e9e7f2;
+  --baseline: #c9c7d6;
+  --good: #0b8a0b;
+  --warning: #b45309;
+  --critical: #c43d3d;
   --radius: 14px;
   --maxw: 1080px;
 }
@@ -23,8 +23,8 @@
 html { scroll-behavior: smooth; }
 body {
   background:
-    radial-gradient(900px 500px at 85% -5%, rgba(163, 230, 53, 0.07), transparent 60%),
-    radial-gradient(700px 400px at -10% 30%, rgba(163, 230, 53, 0.04), transparent 60%),
+    radial-gradient(900px 500px at 85% -5%, rgba(94, 92, 230, 0.08), transparent 60%),
+    radial-gradient(700px 400px at -10% 30%, rgba(233, 128, 116, 0.05), transparent 60%),
     var(--bg);
   color: var(--ink);
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -42,7 +42,7 @@ button { font: inherit; cursor: pointer; }
   position: sticky; top: 0; z-index: 50;
   display: flex; align-items: center; justify-content: space-between;
   padding: 0.7rem 1.4rem;
-  background: rgba(11, 14, 19, 0.85);
+  background: rgba(245, 241, 240, 0.85);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--border);
 }
@@ -76,10 +76,10 @@ button { font: inherit; cursor: pointer; }
 .hero-visual { display: grid; place-items: center; }
 .mock-stage {
   position: relative;
-  background: linear-gradient(160deg, var(--surface-2), #0e1319);
+  background: linear-gradient(160deg, #ffffff, #eeeafa);
   border: 1px solid var(--border); border-radius: 20px;
   padding: 2rem 2.4rem 1.2rem;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(163, 230, 53, 0.08);
+  box-shadow: 0 24px 60px rgba(70, 60, 160, 0.14), 0 0 0 1px rgba(94, 92, 230, 0.10);
   animation: floaty 5s ease-in-out infinite;
 }
 @keyframes floaty { 50% { transform: translateY(-8px); } }
@@ -88,10 +88,10 @@ button { font: inherit; cursor: pointer; }
   position: absolute; top: 12px; left: 14px;
   color: var(--accent); font-size: 0.7rem; font-weight: 800; letter-spacing: 0.12em;
 }
-.mock-skeleton { width: 170px; height: auto; display: block; filter: drop-shadow(0 0 14px rgba(163, 230, 53, 0.35)); }
+.mock-skeleton { width: 170px; height: auto; display: block; filter: drop-shadow(0 0 14px rgba(94, 92, 230, 0.35)); }
 .mock-hud { display: flex; gap: 0.5rem; align-items: center; margin-top: 1rem; flex-wrap: wrap; }
 .mock-chip {
-  background: rgba(11, 14, 19, 0.8); border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.85); border: 1px solid var(--border);
   border-radius: 8px; padding: 0.25rem 0.6rem; font-size: 0.75rem; color: var(--ink-2);
 }
 .mock-chip b { color: var(--accent); font-size: 0.95rem; }
@@ -122,7 +122,7 @@ button { font: inherit; cursor: pointer; }
 .btn-primary { background: var(--accent); color: var(--accent-ink); }
 .btn-primary:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 6px 24px rgba(163, 230, 53, 0.35);
+  box-shadow: 0 6px 24px rgba(94, 92, 230, 0.35);
 }
 .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
 .btn-ghost { background: transparent; color: var(--ink-2); border: 1px solid var(--border); }
@@ -135,7 +135,7 @@ button { font: inherit; cursor: pointer; }
   width: 4px; border-radius: 2px; background: var(--accent);
 }
 .how-card { transition: transform 0.15s ease, box-shadow 0.2s ease; }
-.how-card:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35); }
+.how-card:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(29, 29, 31, 0.10); }
 .section-sub { color: var(--ink-muted); margin: 0.3rem 0 1.4rem; }
 .app, .progress, .coachsec, .how, .summary {
   max-width: var(--maxw); margin: 0 auto; padding: 3.2rem 1.4rem;
@@ -156,7 +156,7 @@ button { font: inherit; cursor: pointer; }
 .ex-card:hover {
   background: var(--surface-2);
   transform: translateY(-2px);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 10px 28px rgba(29, 29, 31, 0.10);
 }
 .ex-card.selected { border-color: var(--accent); background: var(--surface-2); }
 .ex-icon { font-size: 1.5rem; }
@@ -193,7 +193,7 @@ button { font: inherit; cursor: pointer; }
 }
 .phase-badge {
   position: absolute; top: 12px; left: 12px;
-  background: rgba(11, 14, 19, 0.75); color: var(--accent);
+  background: rgba(20, 18, 40, 0.75); color: #c3c1ff;
   font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
   font-size: 0.8rem; padding: 0.35rem 0.7rem; border-radius: 8px;
 }
@@ -307,7 +307,7 @@ button { font: inherit; cursor: pointer; }
   position: fixed; z-index: 90; pointer-events: none;
   background: var(--surface-2); border: 1px solid var(--border);
   border-radius: 8px; padding: 0.4rem 0.6rem; font-size: 0.8rem;
-  color: var(--ink); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  color: var(--ink); box-shadow: 0 4px 14px rgba(29, 29, 31, 0.18);
 }
 
 /* ---------- chat ---------- */
@@ -359,7 +359,7 @@ button { font: inherit; cursor: pointer; }
   border: 1px solid var(--border); border-radius: var(--radius);
   padding: 1.4rem; max-width: 420px; width: 92vw;
 }
-.modal::backdrop { background: rgba(0, 0, 0, 0.6); }
+.modal::backdrop { background: rgba(29, 29, 31, 0.35); }
 .modal h3 { margin-bottom: 0.2rem; }
 .modal-sub { color: var(--ink-muted); font-size: 0.85rem; margin-bottom: 1rem; }
 .modal label { display: block; font-size: 0.85rem; color: var(--ink-2); margin-bottom: 0.8rem; }
@@ -371,7 +371,7 @@ button { font: inherit; cursor: pointer; }
 .modal-actions { display: flex; gap: 0.6rem; justify-content: flex-end; }
 
 /* ---------- privacy HUD ---------- */
-.hud-privacy { border-color: rgba(163, 230, 53, 0.25); }
+.hud-privacy { border-color: rgba(94, 92, 230, 0.30); }
 .privacy-stats { color: var(--ink-2); font-size: 0.8rem; line-height: 1.5; }
 .privacy-stats b { color: var(--accent); font-variant-numeric: tabular-nums; }
 .privacy-local {

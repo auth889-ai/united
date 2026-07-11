@@ -17,9 +17,9 @@ PAGE = """<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>FormCoach AI — Coach Dashboard</title>
 <style>
-  :root { --bg:#0b0e13; --surface:#151b23; --border:rgba(255,255,255,.08);
-    --ink:#f4f6f8; --ink2:#b7c0ca; --muted:#8a939d; --accent:#a3e635;
-    --good:#0ca30c; --warn:#fab219; --bad:#d03b3b; }
+  :root { --bg:#f5f1f0; --surface:#ffffff; --border:rgba(0,0,0,.08);
+    --ink:#1d1d1f; --ink2:#4b4b54; --muted:#86868b; --accent:#5e5ce6;
+    --good:#0b8a0b; --warn:#b45309; --bad:#c43d3d; }
   * { margin:0; padding:0; box-sizing:border-box; }
   body { background:var(--bg); color:var(--ink);
     font-family:system-ui,-apple-system,"Segoe UI",sans-serif; padding:2rem 1.2rem; }
@@ -36,8 +36,8 @@ PAGE = """<!DOCTYPE html>
     border-radius:14px; padding:1rem 1.2rem; margin-bottom:.9rem; }
   .athlete h2 { font-size:1.05rem; display:flex; align-items:center; gap:.6rem; }
   .flag { font-size:.72rem; padding:.15rem .5rem; border-radius:999px; font-weight:700; }
-  .flag.ok { background:rgba(12,163,12,.15); color:var(--good); }
-  .flag.risk { background:rgba(208,59,59,.18); color:var(--bad); }
+  .flag.ok { background:rgba(11,138,11,.12); color:var(--good); }
+  .flag.risk { background:rgba(196,61,61,.12); color:var(--bad); }
   table { width:100%; border-collapse:collapse; margin-top:.6rem; font-size:.85rem; }
   th,td { text-align:left; padding:.4rem .5rem; border-bottom:1px solid var(--border);
     font-variant-numeric:tabular-nums; }
@@ -62,10 +62,10 @@ fetch('/api/reports?limit=200&key=' + encodeURIComponent(key)).then(r => {
     document.getElementById('athletes').innerHTML =
       `<div class="empty">🔐 Coach access key required.<br><br>
        <input id="k" type="password" placeholder="coach key"
-         style="background:#1c242f;border:1px solid rgba(255,255,255,.1);border-radius:8px;
-         padding:.5rem .8rem;color:#f4f6f8" />
+         style="background:#f2f0fa;border:1px solid rgba(0,0,0,.12);border-radius:8px;
+         padding:.5rem .8rem;color:#1d1d1f" />
        <button onclick="location.search='?key='+encodeURIComponent(document.getElementById('k').value)"
-         style="background:#a3e635;border:none;border-radius:8px;padding:.5rem 1rem;
+         style="background:#5e5ce6;color:#fff;border:none;border-radius:8px;padding:.5rem 1rem;
          font-weight:700;cursor:pointer;margin-left:.5rem">Unlock</button></div>`;
     throw new Error('unauthorized');
   }

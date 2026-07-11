@@ -124,9 +124,9 @@ function drawLabel(text, x, y) {
   ctx.font = "700 15px 'Space Grotesk', system-ui, sans-serif";
   ctx.textAlign = "center";
   const w = ctx.measureText(text).width + 12;
-  ctx.fillStyle = "rgba(11,14,19,0.75)";
+  ctx.fillStyle = "rgba(20,18,40,0.78)";
   ctx.fillRect(-w / 2, -13, w, 19);
-  ctx.fillStyle = "#a3e635";
+  ctx.fillStyle = "#c3c1ff";
   ctx.fillText(text, 0, 2);
   ctx.restore();
 }
@@ -140,7 +140,7 @@ function drawAngles(lm) {
     const x = lm[b].x * overlay.width, y = lm[b].y * overlay.height;
     ctx.beginPath();
     ctx.arc(x, y, 15, 0, Math.PI * 2);
-    ctx.strokeStyle = "rgba(163,230,53,0.85)";
+    ctx.strokeStyle = "rgba(125,123,255,0.9)";
     ctx.lineWidth = 2;
     ctx.stroke();
     drawLabel(`${deg}°`, x, y - 26);
@@ -168,7 +168,7 @@ function maybeSaveBestRep(score) {
 function drawGhost() {
   if (!state.ghost || !state.bestRep || !state.running) return;
   const f = state.bestRep[ghostIdx++ % state.bestRep.length];
-  drawingUtils.drawConnectors(f, PoseLandmarker.POSE_CONNECTIONS, { color: "rgba(163,230,53,0.22)", lineWidth: 2 });
+  drawingUtils.drawConnectors(f, PoseLandmarker.POSE_CONNECTIONS, { color: "rgba(125,123,255,0.28)", lineWidth: 2 });
 }
 
 /* ---------- demo mode: synthetic athlete, no camera required ---------- */
@@ -189,13 +189,13 @@ function startDemo() {
 
 function demoLoop() {
   if (!state.demo) return;
-  ctx.fillStyle = "#10151c";
+  ctx.fillStyle = "#141228";
   ctx.fillRect(0, 0, overlay.width, overlay.height);
   const lm = demoPose(performance.now());
   countFrame();
   if (!drawingUtils) drawingUtils = drawer();
   drawGhost();
-  drawingUtils.drawConnectors(lm, PoseLandmarker.POSE_CONNECTIONS, { color: "#a3e635", lineWidth: 3 });
+  drawingUtils.drawConnectors(lm, PoseLandmarker.POSE_CONNECTIONS, { color: "#7d7bff", lineWidth: 3 });
   drawingUtils.drawLandmarks(lm, { color: "#ffffff", fillColor: "#ffffff", radius: 3 });
   if (state.running) { onFrame(lm); drawAngles(lm); }
   requestAnimationFrame(demoLoop);
@@ -212,7 +212,7 @@ function loop() {
     if (lm) {
       if (!drawingUtils) drawingUtils = drawer();
       drawGhost();
-      drawingUtils.drawConnectors(lm, PoseLandmarker.POSE_CONNECTIONS, { color: "#a3e635", lineWidth: 3 });
+      drawingUtils.drawConnectors(lm, PoseLandmarker.POSE_CONNECTIONS, { color: "#7d7bff", lineWidth: 3 });
       drawingUtils.drawLandmarks(lm, { color: "#ffffff", fillColor: "#ffffff", radius: 3 });
       if (state.running) { onFrame(lm); drawAngles(lm); }
     } else if (state.running) {

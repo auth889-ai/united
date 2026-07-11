@@ -1,13 +1,13 @@
 // Progress chart: single-series SVG line of avg form score per session.
-// Series color #65a30d is validated (lightness band, chroma, ≥3:1 contrast)
-// against the chart surface #151b23. Single series → no legend; the title
+// Series color #5e5ce6 is validated (lightness band, chroma, ≥3:1 contrast)
+// against the white chart surface. Single series → no legend; the title
 // names it. Last point is direct-labeled; every point has a hover tooltip.
 
-const SERIES = "#65a30d";
-const GRID = "#2a323d";
-const BASELINE = "#3a434f";
-const MUTED = "#8a939d";
-const INK = "#f4f6f8";
+const SERIES = "#5e5ce6";
+const GRID = "#e9e7f2";
+const BASELINE = "#c9c7d6";
+const MUTED = "#86868b";
+const INK = "#1d1d1f";
 
 let tooltip = null;
 function showTip(x, y, html) {
@@ -60,7 +60,7 @@ export function renderChart(container, sessions) {
 
   // markers (≥8px hit target via invisible halo)
   data.forEach((s, i) => {
-    g += `<circle cx="${x(i)}" cy="${y(s.avgScore)}" r="4" fill="${SERIES}" stroke="#151b23" stroke-width="2"/>`;
+    g += `<circle cx="${x(i)}" cy="${y(s.avgScore)}" r="4" fill="${SERIES}" stroke="#ffffff" stroke-width="2"/>`;
     g += `<circle class="hit" data-i="${i}" cx="${x(i)}" cy="${y(s.avgScore)}" r="12" fill="transparent"/>`;
   });
 

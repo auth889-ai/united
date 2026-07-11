@@ -61,7 +61,7 @@ function radar(agents) {
   const dirs = [[0, -1], [1, 0], [0, 1], [-1, 0]]; // axis unit vectors: up/right/down/left
   const p = (i, v) => `${C + dirs[i][0] * R * (v / 100)},${C + dirs[i][1] * R * (v / 100)}`;
   const grid = [25, 50, 75, 100]
-    .map((g) => `<polygon points="${dirs.map((_, i) => p(i, g)).join(" ")}" fill="none" stroke="#2a323d" stroke-width="1"/>`)
+    .map((g) => `<polygon points="${dirs.map((_, i) => p(i, g)).join(" ")}" fill="none" stroke="#e9e7f2" stroke-width="1"/>`)
     .join("");
   const shape = agents.map((a, i) => p(i, a.score)).join(" ");
   const labels = agents
@@ -69,8 +69,8 @@ function radar(agents) {
     .join("");
   return `<svg class="agent-radar" viewBox="0 0 140 140" role="img" aria-label="Radar chart of the four agent scores">
     ${grid}
-    <polygon points="${shape}" fill="rgba(101,163,13,0.25)" stroke="#65a30d" stroke-width="2"/>
-    ${agents.map((a, i) => `<circle cx="${p(i, a.score).split(",")[0]}" cy="${p(i, a.score).split(",")[1]}" r="3" fill="#65a30d"/>`).join("")}
+    <polygon points="${shape}" fill="rgba(94,92,230,0.22)" stroke="#5e5ce6" stroke-width="2"/>
+    ${agents.map((a, i) => `<circle cx="${p(i, a.score).split(",")[0]}" cy="${p(i, a.score).split(",")[1]}" r="3" fill="#5e5ce6"/>`).join("")}
     ${labels}
   </svg>`;
 }
