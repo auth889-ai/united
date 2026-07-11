@@ -1,64 +1,19 @@
-"""FormCoach AI — multi-agent coaching backend.
+"""The four coaching agents.
 
-Pose estimation stays on-device in the browser; only anonymized session
-stats (joint-angle metrics, rep counts, fault tallies) arrive here. Four
-specialized AI agents analyze each session in parallel and return an
-explainable report: every agent shows its score, findings, and reasoning.
-
-Runs Claude-powered when ANTHROPIC_API_KEY is set; otherwise falls back to
-deterministic rule-based agents so the demo always works.
-
-    pip install -r requirements.txt
-    uvicorn main:app --port 8001
+Each agent analyzes one dimension of a training session and returns a
+Pydantic-validated AgentReport (score / findings / reasoning). Agents run
+Claude-powered when ANTHROPIC_API_KEY is set; a deterministic rules engine
+mirrors every agent so the API degrades gracefully with no key.
 """
 
-import asyncio
 import json
 import os
-import sqlite3
-from datetime import datetime, timezone
-from pathlib import Path
 
 import anthropic
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
 
-DB_PATH = Path(__file__).parent / "formcoach.db"
+from .models import AgentReport, Session
+
 MODEL = "claude-opus-4-8"
-
-app = FastAPI(title="FormCoach AI — Multi-Agent Coaching API")
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # hackathon demo; lock down for production
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# ---------------------------------------------------------------- models
-
-
-class Session(BaseModel):
-    date: str
-    exercise: str
-    reps: int
-    avgScore: int
-    faults: dict[str, int] = {}
-    bestJumpCm: int = 0
-
-
-class AnalyzeRequest(BaseModel):
-    session: Session
-    history: list[Session] = []
-
-
-class AgentReport(BaseModel):
-    """Structured output every agent must produce — the 'transparent AI' part."""
-
-    score: int = Field(ge=0, le=100, description="0-100 score for this agent's dimension")
-    findings: list[str] = Field(description="2-4 short, specific findings")
-    reasoning: str = Field(description="One sentence: how the data led to this verdict")
-
 
 AGENTS = [
     {
@@ -104,32 +59,16 @@ AGENTS = [
     },
 ]
 
-# ---------------------------------------------------------------- storage
-
-
-def db() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute(
-        """CREATE TABLE IF NOT EXISTS reports (
-             id INTEGER PRIMARY KEY AUTOINCREMENT,
-             created_at TEXT NOT NULL,
-             exercise TEXT NOT NULL,
-             reps INTEGER NOT NULL,
-             avg_score INTEGER NOT NULL,
-             report_json TEXT NOT NULL
-           )"""
-    )
-    return conn
-
-
-# ---------------------------------------------------------------- agents
-
 _client: anthropic.AsyncAnthropic | None = None
 if os.environ.get("ANTHROPIC_API_KEY"):
     _client = anthropic.AsyncAnthropic()
 
 
-def _fallback_report(agent: dict, session: Session, history: list[Session]) -> AgentReport:
+def llm_enabled() -> bool:
+    return _client is not None
+
+
+def rules_report(agent: dict, session: Session, history: list[Session]) -> AgentReport:
     """Deterministic analysis so the API (and demo) works with no LLM key."""
     faults = session.faults or {}
     total_faults = sum(faults.values())
@@ -144,9 +83,10 @@ def _fallback_report(agent: dict, session: Session, history: list[Session]) -> A
         reasoning = "Score derived from per-rep joint-angle deductions."
     elif agent["key"] == "injury":
         score = max(0, 100 - total_faults * 8)
-        findings = [f'"{k}" occurred {v}x — repeated exposure raises joint stress.' for k, v in list(faults.items())[:3]] or [
-            "No fault patterns associated with elevated injury risk."
-        ]
+        findings = [
+            f'"{k}" occurred {v}x — repeated exposure raises joint stress.'
+            for k, v in list(faults.items())[:3]
+        ] or ["No fault patterns associated with elevated injury risk."]
         reasoning = "Risk estimated from fault frequency and type."
     elif agent["key"] == "programming":
         ready = session.avgScore >= 85
@@ -175,7 +115,7 @@ def _fallback_report(agent: dict, session: Session, history: list[Session]) -> A
     return AgentReport(score=score, findings=findings, reasoning=reasoning)
 
 
-async def _llm_report(agent: dict, session: Session, history: list[Session]) -> AgentReport:
+async def llm_report(agent: dict, session: Session, history: list[Session]) -> AgentReport:
     payload = {
         "session": session.model_dump(),
         "recent_history": [h.model_dump() for h in history[-6:]],
@@ -199,12 +139,12 @@ async def run_agent(agent: dict, session: Session, history: list[Session]) -> di
     engine = "rules"
     if _client is not None:
         try:
-            report = await _llm_report(agent, session, history)
+            report = await llm_report(agent, session, history)
             engine = "claude"
         except (anthropic.APIError, anthropic.APIConnectionError):
-            report = _fallback_report(agent, session, history)
+            report = rules_report(agent, session, history)
     else:
-        report = _fallback_report(agent, session, history)
+        report = rules_report(agent, session, history)
     return {
         "key": agent["key"],
         "icon": agent["icon"],
@@ -212,60 +152,3 @@ async def run_agent(agent: dict, session: Session, history: list[Session]) -> di
         "engine": engine,
         **report.model_dump(),
     }
-
-
-# ---------------------------------------------------------------- routes
-
-
-@app.get("/api/health")
-def health() -> dict:
-    return {"ok": True, "llm": _client is not None, "model": MODEL if _client else None}
-
-
-@app.post("/api/analyze")
-async def analyze(req: AnalyzeRequest) -> dict:
-    # All four agents run in parallel — one slow agent never blocks the others.
-    agents = await asyncio.gather(*(run_agent(a, req.session, req.history) for a in AGENTS))
-    overall = round(sum(a["score"] for a in agents) / len(agents))
-    report = {
-        "overall": overall,
-        "verdict": ("Ready to progress" if overall >= 85
-                    else "Solid — refine technique" if overall >= 70
-                    else "Focus on quality"),
-        "agents": agents,
-    }
-
-    conn = db()
-    conn.execute(
-        "INSERT INTO reports (created_at, exercise, reps, avg_score, report_json) VALUES (?,?,?,?,?)",
-        (
-            datetime.now(timezone.utc).isoformat(),
-            req.session.exercise,
-            req.session.reps,
-            req.session.avgScore,
-            json.dumps(report),
-        ),
-    )
-    conn.commit()
-    conn.close()
-    return report
-
-
-@app.get("/api/reports")
-def reports(limit: int = 20) -> list[dict]:
-    conn = db()
-    rows = conn.execute(
-        "SELECT created_at, exercise, reps, avg_score, report_json FROM reports ORDER BY id DESC LIMIT ?",
-        (limit,),
-    ).fetchall()
-    conn.close()
-    return [
-        {
-            "created_at": r[0],
-            "exercise": r[1],
-            "reps": r[2],
-            "avg_score": r[3],
-            "report": json.loads(r[4]),
-        }
-        for r in rows
-    ]

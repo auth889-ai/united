@@ -29,43 +29,72 @@ const state = {
 
 /* ================= camera + model ================= */
 
+async function loadModel() {
+  if (state.landmarker) return;
+  const vision = await FilesetResolver.forVisionTasks(
+    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
+  );
+  state.landmarker = await PoseLandmarker.createFromOptions(vision, {
+    baseOptions: {
+      modelAssetPath:
+        "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
+      delegate: "GPU",
+    },
+    runningMode: "VIDEO",
+    numPoses: 1,
+  });
+}
+
+async function startTracking() {
+  await video.play();
+  // videoWidth can be 0 until metadata arrives on some browsers
+  if (!video.videoWidth) {
+    await new Promise((r) => video.addEventListener("loadedmetadata", r, { once: true }));
+  }
+  overlay.width = video.videoWidth;
+  overlay.height = video.videoHeight;
+  state.cameraOn = true;
+  $("stageMsg").classList.add("hidden");
+  $("phaseBadge").classList.remove("hidden");
+  $("btnSession").disabled = false;
+  loop();
+}
+
 async function enableCamera() {
   $("stageMsg").innerHTML = "<p>Loading pose model…</p>";
   try {
-    const vision = await FilesetResolver.forVisionTasks(
-      "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
-    );
-    state.landmarker = await PoseLandmarker.createFromOptions(vision, {
-      baseOptions: {
-        modelAssetPath:
-          "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
-        delegate: "GPU",
-      },
-      runningMode: "VIDEO",
-      numPoses: 1,
-    });
+    await loadModel();
     const stream = await navigator.mediaDevices.getUserMedia({
       video: { width: 960, height: 720, facingMode: "user" }, audio: false,
     });
     video.srcObject = stream;
-    await video.play();
-    // videoWidth can be 0 until metadata arrives on some browsers
-    if (!video.videoWidth) {
-      await new Promise((r) => video.addEventListener("loadedmetadata", r, { once: true }));
-    }
-    overlay.width = video.videoWidth;
-    overlay.height = video.videoHeight;
-    state.cameraOn = true;
-    $("stageMsg").classList.add("hidden");
-    $("phaseBadge").classList.remove("hidden");
-    $("btnSession").disabled = false;
-    loop();
+    await startTracking();
   } catch (err) {
     $("stageMsg").innerHTML =
       `<p>⚠ ${err.name === "NotAllowedError"
         ? "Camera permission denied — allow camera access and reload."
         : "Could not start: " + err.message}</p>
        <button id="btnCamera" class="btn btn-primary">Try again</button>`;
+    $("btnCamera").onclick = enableCamera;
+  }
+}
+
+// Analyze ANY footage — your own recordings, a training clip, a downloaded
+// video of a pro athlete. Same engine, same coaching, no camera involved.
+async function analyzeVideoFile(file) {
+  $("stageMsg").innerHTML = "<p>Loading pose model…</p>";
+  try {
+    await loadModel();
+    video.srcObject = null;
+    video.src = URL.createObjectURL(file);
+    video.loop = true;
+    video.muted = true;
+    document.querySelector(".stage").classList.add("file-mode"); // don't mirror uploaded footage
+    await startTracking();
+    setCue("Video loaded — press Start session to analyze the athlete.", "good");
+  } catch (err) {
+    $("stageMsg").innerHTML = `<p>⚠ Could not play that video: ${err.message}</p>
+       <button id="btnCamera" class="btn btn-primary">Enable camera instead</button>`;
     $("btnCamera").onclick = enableCamera;
   }
 }
@@ -358,6 +387,11 @@ document.querySelectorAll(".ex-card").forEach((card) => {
 
 $("btnCamera").onclick = () => { state.demo = false; enableCamera(); };
 $("btnDemo").onclick = startDemo;
+$("btnVideo").onclick = () => $("videoFile").click();
+$("videoFile").addEventListener("change", (e) => {
+  const file = e.target.files?.[0];
+  if (file) { state.demo = false; analyzeVideoFile(file); }
+});
 $("btnSession").onclick = () => (state.running ? finishSession() : startSession());
 
 $("voiceToggle").onclick = () => {

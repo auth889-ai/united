@@ -72,7 +72,7 @@ Browser → MediaPipe Pose (on-device WASM+GPU) → Biomechanics engine (rep FSM
 - **A biomechanics engine I wrote from scratch** (`frontend/src/engine/exercises.js`): vector math
   for joint angles, per-exercise finite-state machines for rep detection, and a
   fault-deduction scoring model.
-- **Multi-agent backend** (`backend/main.py`): FastAPI + `asyncio.gather` runs four
+- **Multi-agent backend** (`backend/app/`): FastAPI + `asyncio.gather` runs four
   specialized Claude agents concurrently, each constrained to Pydantic-validated
   structured output (score / findings / reasoning), synthesized into an overall
   readiness score and persisted in SQLite. A deterministic rules engine mirrors
@@ -95,6 +95,7 @@ Pose-based rep counters exist on GitHub. Here is what none of them do, and FormC
 | Silent screen output | **Talks AND listens** — voice coaching out, voice control in; the first form coach a blind athlete can operate entirely eyes-free |
 | Stop when you stop | **Fatigue detection** — notices form degrading rep-over-rep and tells you to rest *before* injury |
 | Single script, no product | Multi-agent AI readiness report (biomechanics / injury risk / programming / progress, each with visible reasoning), streaks & PRs, share cards, installable PWA, CI/CD-deployed |
+| Analyze only a live camera | **Analyzes any video file** — your recordings, training clips, footage of pro athletes |
 | Require a webcam to even evaluate | **Built-in demo mode** — a synthetic athlete runs through the same biomechanics engine, so anyone can watch the AI coach work with no camera at all |
 
 The new idea isn't "detect a squat." It's **turning a webcam into a complete, safe, accessible coaching experience** — feedback, safety, accessibility, and programming in one loop.

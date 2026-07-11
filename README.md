@@ -1,5 +1,8 @@
 # 🏋️ FormCoach AI
 
+![CI](https://github.com/auth889-ai/united/actions/workflows/ci.yml/badge.svg)
+![Deploy](https://github.com/auth889-ai/united/actions/workflows/deploy.yml/badge.svg)
+
 **Every athlete deserves a coach. Now everyone has one.**
 
 FormCoach AI is a real-time sports form coach that runs **entirely in your browser**.
@@ -11,6 +14,8 @@ Built solo in under 24 hours for **United Hacks V7** (Sports track).
 
 ## ✨ Features
 
+- **📼 Analyze ANY video** — upload your own recording, a training clip, or downloaded
+  footage of a pro athlete; the same engine overlays the skeleton and scores the form
 - **▶ Demo mode — no camera needed**: a synthetic athlete performs squats (including
   deliberately bad reps) through the same biomechanics engine, so judges and visitors
   see the AI coaching live in 5 seconds
@@ -69,7 +74,7 @@ python3 -m http.server 8000 --directory frontend
 cd backend
 pip install -r requirements.txt
 export ANTHROPIC_API_KEY=sk-...   # optional — falls back to rules engine without it
-uvicorn main:app --port 8001
+uvicorn app.main:app --port 8001
 ```
 
 Works in Chrome/Edge (best), Firefox and Safari. Allow camera access, stand back so
@@ -116,11 +121,28 @@ frontend/                       static web app (auto-deployed to GitHub Pages by
       chart.js                  progress chart (tooltips, table view, direct labels)
       share.js                  downloadable session share card (canvas PNG)
     styles/main.css             dark athletic design system
-backend/                        multi-agent coaching API
-  main.py                       FastAPI — 4 parallel AI agents + SQLite
+backend/                        multi-agent coaching API (layered FastAPI package)
+  app/
+    main.py                     app factory + middleware
+    routes.py                   API endpoints
+    agents.py                   the 4 coaching agents (Claude + rules engines)
+    models.py                   Pydantic schemas
+    db.py                       SQLite persistence
+  tests/test_api.py             API test suite (pytest)
   requirements.txt
-.github/workflows/deploy.yml    CI/CD — deploys frontend/ to GitHub Pages on every push
+.github/workflows/
+  ci.yml                        runs backend + engine test suites on every push
+  deploy.yml                    deploys frontend/ to GitHub Pages on every push
 ```
+
+## ✅ Tests
+
+```bash
+pytest backend/tests -v              # 5 API tests
+node frontend/tests/engine.test.mjs  # 7 biomechanics engine tests
+```
+
+Both suites run automatically in CI on every push.
 
 ## ⚖️ License & credits
 
