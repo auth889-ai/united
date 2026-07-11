@@ -95,6 +95,7 @@ Pose-based rep counters exist on GitHub. Here is what none of them do, and FormC
 | Silent screen output | **Talks AND listens** — voice coaching out, voice control in; the first form coach a blind athlete can operate entirely eyes-free |
 | Stop when you stop | **Fatigue detection** — notices form degrading rep-over-rep and tells you to rest *before* injury |
 | Single script, no product | Multi-agent AI readiness report (biomechanics / injury risk / programming / progress, each with visible reasoning), streaks & PRs, share cards, installable PWA, CI/CD-deployed |
+| Draw a static skeleton | **Live telestration** (joint angles in degrees on the athlete, broadcast-style) + **ghost-rep overlay** — race a translucent replay of your own best rep |
 | Analyze only a live camera | **Analyzes any video file** — your recordings, training clips, footage of pro athletes |
 | Require a webcam to even evaluate | **Built-in demo mode** — a synthetic athlete runs through the same biomechanics engine, so anyone can watch the AI coach work with no camera at all |
 

@@ -1,4 +1,4 @@
-import { EXERCISES, PRIORITY } from "./engine/exercises.js";
+import { EXERCISES, PRIORITY, LM, angle } from "./engine/exercises.js";
 import { speak, speakRep, setVoice, summarize, coachReply, getLLMConfig, setLLMConfig } from "./services/coach.js";
 import { renderChart, renderTable } from "./ui/chart.js";
 import { voiceControlSupported, startVoiceControl, stopVoiceControl } from "./services/voice.js";
@@ -19,6 +19,10 @@ const state = {
   running: false,        // session active
   cameraOn: false,
   demo: false,           // synthetic-athlete mode (no camera needed)
+  ghost: true,           // overlay of your best rep
+  repFrames: [],         // landmark frames of the current rep
+  bestRep: null,         // frames of the best-scoring rep this session
+  bestRepScore: -1,
   reps: 0,
   scores: [],
   repTimes: [],          // performance.now() per completed rep (tempo analytics)
@@ -102,6 +106,69 @@ async function analyzeVideoFile(file) {
 const drawer = () => new DrawingUtils(ctx);
 let drawingUtils = null;
 
+/* ---------- telestration: live joint-angle readouts on the athlete ---------- */
+
+const ANGLE_TRIPLES = {
+  squat: [[LM.L_HIP, LM.L_KNEE, LM.L_ANKLE], [LM.R_HIP, LM.R_KNEE, LM.R_ANKLE]],
+  pushup: [[LM.L_SHOULDER, LM.L_ELBOW, LM.L_WRIST], [LM.R_SHOULDER, LM.R_ELBOW, LM.R_WRIST]],
+  curl: [[LM.L_SHOULDER, LM.L_ELBOW, LM.L_WRIST], [LM.R_SHOULDER, LM.R_ELBOW, LM.R_WRIST]],
+};
+
+function drawLabel(text, x, y) {
+  ctx.save();
+  ctx.translate(x, y);
+  // the canvas is CSS-mirrored in selfie mode — pre-flip text so it reads correctly
+  if (!document.querySelector(".stage").classList.contains("file-mode")) ctx.scale(-1, 1);
+  ctx.font = "700 15px 'Space Grotesk', system-ui, sans-serif";
+  ctx.textAlign = "center";
+  const w = ctx.measureText(text).width + 12;
+  ctx.fillStyle = "rgba(11,14,19,0.75)";
+  ctx.fillRect(-w / 2, -13, w, 19);
+  ctx.fillStyle = "#a3e635";
+  ctx.fillText(text, 0, 2);
+  ctx.restore();
+}
+
+function drawAngles(lm) {
+  const triples = ANGLE_TRIPLES[state.exercise];
+  if (!triples) return;
+  for (const [a, b, c] of triples) {
+    if ((lm[b]?.visibility ?? 0) < 0.5) continue;
+    const deg = Math.round(angle(lm[a], lm[b], lm[c]));
+    const x = lm[b].x * overlay.width, y = lm[b].y * overlay.height;
+    ctx.beginPath();
+    ctx.arc(x, y, 15, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(163,230,53,0.85)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    drawLabel(`${deg}°`, x, y - 26);
+  }
+}
+
+/* ---------- ghost rep: race your own best form ---------- */
+
+let ghostIdx = 0;
+
+function recordFrame(lm) {
+  if (state.repFrames.length < 300) {
+    state.repFrames.push(lm.map((p) => ({ x: p.x, y: p.y, z: 0, visibility: p.visibility ?? 1 })));
+  }
+}
+
+function maybeSaveBestRep(score) {
+  if (score !== null && score >= state.bestRepScore && state.repFrames.length > 5) {
+    state.bestRep = state.repFrames;
+    state.bestRepScore = score;
+  }
+  state.repFrames = [];
+}
+
+function drawGhost() {
+  if (!state.ghost || !state.bestRep || !state.running) return;
+  const f = state.bestRep[ghostIdx++ % state.bestRep.length];
+  drawingUtils.drawConnectors(f, PoseLandmarker.POSE_CONNECTIONS, { color: "rgba(163,230,53,0.22)", lineWidth: 2 });
+}
+
 /* ---------- demo mode: synthetic athlete, no camera required ---------- */
 
 function startDemo() {
@@ -123,9 +190,10 @@ function demoLoop() {
   ctx.fillRect(0, 0, overlay.width, overlay.height);
   const lm = demoPose(performance.now());
   if (!drawingUtils) drawingUtils = drawer();
+  drawGhost();
   drawingUtils.drawConnectors(lm, PoseLandmarker.POSE_CONNECTIONS, { color: "#a3e635", lineWidth: 3 });
   drawingUtils.drawLandmarks(lm, { color: "#ffffff", fillColor: "#ffffff", radius: 3 });
-  if (state.running) onFrame(lm);
+  if (state.running) { onFrame(lm); drawAngles(lm); }
   requestAnimationFrame(demoLoop);
 }
 
@@ -138,9 +206,10 @@ function loop() {
     const lm = result.landmarks?.[0];
     if (lm) {
       if (!drawingUtils) drawingUtils = drawer();
+      drawGhost();
       drawingUtils.drawConnectors(lm, PoseLandmarker.POSE_CONNECTIONS, { color: "#a3e635", lineWidth: 3 });
       drawingUtils.drawLandmarks(lm, { color: "#ffffff", fillColor: "#ffffff", radius: 3 });
-      if (state.running) onFrame(lm);
+      if (state.running) { onFrame(lm); drawAngles(lm); }
     } else if (state.running) {
       setCue("I can't see you — step into frame.", "warn");
     }
@@ -168,6 +237,7 @@ function checkFatigue() {
 }
 
 function onFrame(lm) {
+  recordFrame(lm);
   const r = state.analyzer.update(lm);
   $("phaseBadge").textContent = r.phase;
 
@@ -189,6 +259,7 @@ function onFrame(lm) {
     state.reps++;
     if (r.repScore !== null) state.scores.push(r.repScore);
     state.repTimes.push(performance.now());
+    maybeSaveBestRep(r.repScore);
     checkFatigue();
     $("repCount").textContent = state.reps;
     if (state.exercise === "jump" && state.analyzer.lastJumpCm) {
@@ -219,6 +290,7 @@ function startSession() {
   state.running = true;
   state.reps = 0; state.scores = []; state.faults = {};
   state.repTimes = []; fatigueWarned = false;
+  state.repFrames = []; state.bestRep = null; state.bestRepScore = -1; ghostIdx = 0;
   $("repCount").textContent = "0";
   updateScoreRing();
   $("btnSession").textContent = "Finish session";
@@ -456,6 +528,12 @@ if (!voiceControlSupported()) {
     }
   };
 }
+
+$("ghostToggle").onclick = () => {
+  state.ghost = !state.ghost;
+  $("ghostToggle").setAttribute("aria-pressed", state.ghost);
+  $("ghostToggle").textContent = state.ghost ? "👻 Ghost rep on" : "👻 Ghost rep off";
+};
 
 $("tableToggle").onclick = () => {
   const showTable = $("chartTable").classList.contains("hidden");

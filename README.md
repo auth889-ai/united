@@ -14,6 +14,10 @@ Built solo in under 24 hours for **United Hacks V7** (Sports track).
 
 ## ✨ Features
 
+- **📐 Live telestration** — broadcast-style joint-angle readouts (knee/elbow degrees)
+  drawn on the athlete in real time
+- **👻 Ghost rep** — your best-scoring rep replays as a translucent skeleton over you,
+  so every rep races your own best form
 - **📼 Analyze ANY video** — upload your own recording, a training clip, or downloaded
   footage of a pro athlete; the same engine overlays the skeleton and scores the form
 - **▶ Demo mode — no camera needed**: a synthetic athlete performs squats (including
