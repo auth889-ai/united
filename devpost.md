@@ -81,6 +81,20 @@ Browser → MediaPipe Pose (on-device WASM+GPU) → Biomechanics engine (rep FSM
 - Optional **LLM coach chat** through any OpenAI-compatible endpoint, with a
   rules-based fallback so the demo always works offline.
 
+## How it's different (yes, rep counters exist — this isn't one)
+
+Pose-based rep counters exist on GitHub. Here is what none of them do, and FormCoach does:
+
+| Existing pose demos / fitness apps | FormCoach AI |
+|---|---|
+| Count reps for one exercise | **Scores form quality 0–100 per rep** against physio fault criteria (depth, torso lean, knee valgus/ACL risk, body line, elbow drift) |
+| Silent screen output | **Talks AND listens** — voice coaching out, voice control in; the first form coach a blind athlete can operate entirely eyes-free |
+| Stop when you stop | **Fatigue detection** — notices form degrading rep-over-rep and tells you to rest *before* injury |
+| Single script, no product | Multi-agent AI readiness report (biomechanics / injury risk / programming / progress, each with visible reasoning), streaks & PRs, share cards, installable PWA, CI/CD-deployed |
+| Require a webcam to even evaluate | **Built-in demo mode** — a synthetic athlete runs through the same biomechanics engine, so anyone can watch the AI coach work with no camera at all |
+
+The new idea isn't "detect a squat." It's **turning a webcam into a complete, safe, accessible coaching experience** — feedback, safety, accessibility, and programming in one loop.
+
 ## Challenges I ran into
 - **Rep detection that doesn't double-count.** Raw joint angles are noisy;
   I solved it with hysteresis (different enter/exit thresholds per phase) in each

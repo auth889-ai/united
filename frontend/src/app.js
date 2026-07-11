@@ -4,6 +4,7 @@ import { renderChart, renderTable } from "./ui/chart.js";
 import { voiceControlSupported, startVoiceControl, stopVoiceControl } from "./services/voice.js";
 import { requestReport } from "./ui/report.js";
 import { downloadShareCard } from "./ui/share.js";
+import { demoPose } from "./engine/demo.js";
 import {
   PoseLandmarker, FilesetResolver, DrawingUtils,
 } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
@@ -17,6 +18,7 @@ const state = {
   analyzer: null,
   running: false,        // session active
   cameraOn: false,
+  demo: false,           // synthetic-athlete mode (no camera needed)
   reps: 0,
   scores: [],
   repTimes: [],          // performance.now() per completed rep (tempo analytics)
@@ -70,6 +72,33 @@ async function enableCamera() {
 
 const drawer = () => new DrawingUtils(ctx);
 let drawingUtils = null;
+
+/* ---------- demo mode: synthetic athlete, no camera required ---------- */
+
+function startDemo() {
+  if (state.demo || state.cameraOn) return;
+  state.demo = true;
+  overlay.width = 640;
+  overlay.height = 480;
+  $("stageMsg").classList.add("hidden");
+  $("phaseBadge").classList.remove("hidden");
+  $("btnSession").disabled = false;
+  selectExercise("squat");
+  setCue("Demo athlete loaded — press Start session to watch the AI coach it.", "good");
+  demoLoop();
+}
+
+function demoLoop() {
+  if (!state.demo) return;
+  ctx.fillStyle = "#10151c";
+  ctx.fillRect(0, 0, overlay.width, overlay.height);
+  const lm = demoPose(performance.now());
+  if (!drawingUtils) drawingUtils = drawer();
+  drawingUtils.drawConnectors(lm, PoseLandmarker.POSE_CONNECTIONS, { color: "#a3e635", lineWidth: 3 });
+  drawingUtils.drawLandmarks(lm, { color: "#ffffff", fillColor: "#ffffff", radius: 3 });
+  if (state.running) onFrame(lm);
+  requestAnimationFrame(demoLoop);
+}
 
 function loop() {
   if (!state.cameraOn) return;
@@ -327,7 +356,8 @@ document.querySelectorAll(".ex-card").forEach((card) => {
   });
 });
 
-$("btnCamera").onclick = enableCamera;
+$("btnCamera").onclick = () => { state.demo = false; enableCamera(); };
+$("btnDemo").onclick = startDemo;
 $("btnSession").onclick = () => (state.running ? finishSession() : startSession());
 
 $("voiceToggle").onclick = () => {
@@ -346,7 +376,7 @@ function selectExercise(key) {
 function handleIntent(intent) {
   switch (intent) {
     case "start":
-      if (!state.cameraOn) { speak("Enable the camera first.", { force: true }); return; }
+      if (!state.cameraOn && !state.demo) { speak("Enable the camera first.", { force: true }); return; }
       if (!state.running) { startSession(); }
       break;
     case "stop":

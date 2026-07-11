@@ -49,6 +49,10 @@ Do these on camera, narrating:
 
 ## 2:00–2:25 — Progress + AI coach (Scene A, screen only)
 
+Also flash the **"Watch AI demo — no camera"** button: *"And if you don't have a
+camera handy — judges, this means you — a synthetic athlete demos the whole
+engine with one click."*
+
 > "Sessions build a form-score history, so you can watch your technique trend up.
 > And the coach chat knows my numbers — I ask 'what should I fix first' and it
 > answers from MY session data. It even supports plugging in any LLM, like

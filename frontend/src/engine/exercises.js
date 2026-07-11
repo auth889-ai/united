@@ -52,7 +52,7 @@ const P = { CRITICAL: 3, WARN: 2, INFO: 1 };
 
 class SquatAnalyzer {
   constructor() { this.reset(); }
-  reset() { this.state = "up"; this.minKnee = 180; this.maxLean = 0; }
+  reset() { this.state = "up"; this.minKnee = 180; this.maxLean = 0; this.valgus = false; }
   update(lm) {
     const s = bestSide(lm);
     if (vis(lm, s.hip, s.knee, s.ankle) < 0.5) {
@@ -63,22 +63,35 @@ class SquatAnalyzer {
     const cues = [];
     let repDone = false, repScore = null;
 
-    if (this.state === "up" && knee < 110) this.state = "down";
+    // Frontal-view knee valgus (knees caving inward) — a primary ACL risk marker.
+    const bothKnees = vis(lm, LM.L_KNEE, LM.R_KNEE, LM.L_ANKLE, LM.R_ANKLE) > 0.5;
+    if (bothKnees && this.state === "down") {
+      const kneeSpread = Math.abs(lm[LM.L_KNEE].x - lm[LM.R_KNEE].x);
+      const ankleSpread = Math.abs(lm[LM.L_ANKLE].x - lm[LM.R_ANKLE].x);
+      if (ankleSpread > 0.02 && kneeSpread < ankleSpread * 0.75) {
+        this.valgus = true;
+        cues.push({ text: "Knees caving in — push them out over your toes.", level: P.CRITICAL });
+      }
+    }
+
+    // Enter "down" at 120° so partial squats still register (and get scored down).
+    if (this.state === "up" && knee < 120) this.state = "down";
     if (this.state === "down") {
       this.minKnee = Math.min(this.minKnee, knee);
       this.maxLean = Math.max(this.maxLean, lean);
-      if (knee < 105 && this.minKnee > 95) cues.push({ text: "Go a little deeper.", level: P.INFO });
+      if (knee < 115 && this.minKnee > 95) cues.push({ text: "Go a little deeper.", level: P.INFO });
       if (lean > 50) cues.push({ text: "Chest up — you're leaning too far forward.", level: P.CRITICAL });
       if (knee > 155) { // completed the rep
         this.state = "up";
         repDone = true;
         repScore = 100;
-        if (this.minKnee > 110) { repScore -= 30; cues.push({ text: "Too shallow — aim to get thighs near parallel.", level: P.WARN }); }
+        if (this.minKnee > 105) { repScore -= 30; cues.push({ text: "Too shallow — aim to get thighs near parallel.", level: P.WARN }); }
         else if (this.minKnee > 95) { repScore -= 12; }
         if (this.maxLean > 50) repScore -= 25;
         else if (this.maxLean > 40) repScore -= 10;
+        if (this.valgus) repScore -= 20;
         if (repScore >= 90) cues.push({ text: "Great depth, strong rep!", level: P.INFO });
-        this.minKnee = 180; this.maxLean = 0;
+        this.minKnee = 180; this.maxLean = 0; this.valgus = false;
       }
     }
     return { phase: this.state === "down" ? "Down" : "Up", repDone, repScore, cues };
@@ -103,7 +116,8 @@ class PushupAnalyzer {
 
     if (bodyLine < 155) cues.push({ text: "Hips sagging — squeeze your glutes, straight body line.", level: P.CRITICAL });
 
-    if (this.state === "up" && elbow < 100) this.state = "down";
+    // Enter "down" at 115° so shallow push-ups still register (and get scored down).
+    if (this.state === "up" && elbow < 115) this.state = "down";
     if (this.state === "down") {
       this.minElbow = Math.min(this.minElbow, elbow);
       this.worstLine = Math.min(this.worstLine, bodyLine);

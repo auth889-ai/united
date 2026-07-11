@@ -11,6 +11,9 @@ Built solo in under 24 hours for **United Hacks V7** (Sports track).
 
 ## ✨ Features
 
+- **▶ Demo mode — no camera needed**: a synthetic athlete performs squats (including
+  deliberately bad reps) through the same biomechanics engine, so judges and visitors
+  see the AI coaching live in 5 seconds
 - **4 drills**: Squat · Push-up · Bicep curl · **Vertical jump test** (measures your
   jump height in centimetres with no equipment — just your height for calibration)
 - **Real-time pose tracking** — 33 body landmarks at ~30fps, drawn as a live skeleton overlay
