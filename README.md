@@ -10,7 +10,9 @@ Point your webcam at yourself, pick a drill, and it counts your reps, scores eve
 rep's form 0–100, and **speaks coaching cues out loud** — "go deeper", "chest up",
 "hips sagging" — exactly like a coach standing next to you.
 
-Built solo in under 24 hours for **United Hacks V7** (Sports track).
+Built solo in under 48 hours for **United Hacks V7** (Sports track).
+
+**▶ Demo video:** _coming — link will be added at submission_ · **Live demo:** https://auth889-ai.github.io/united/
 
 ## ✨ Features
 
@@ -64,16 +66,22 @@ Built solo in under 24 hours for **United Hacks V7** (Sports track).
 
 ## 🏗 Architecture
 
+```mermaid
+flowchart LR
+  subgraph Device["🔒 Your device — video never leaves"]
+    CAM["Camera / video file /<br/>screen capture / demo athlete"] --> POSE["MediaPipe Pose (full)<br/>WASM + GPU · 33 landmarks @30fps"]
+    POSE --> SMOOTH["EMA smoothing filter"]
+    SMOOTH --> ENGINE["Biomechanics engine<br/>rep FSMs · form scoring ·<br/>valgus/ACL · fatigue · telestration"]
+    ENGINE --> UI["Voice coach 🔊🎤 · HUD ·<br/>ghost rep · charts · share card"]
+    ENGINE --> VAULT["AES-256-GCM vault<br/>per-user encrypted history"]
+  end
+  ENGINE -- "anonymized stats only" --> API["FastAPI backend"]
+  subgraph Server["Backend (optional)"]
+    API --> AGENTS["4 parallel AI agents<br/>🦵 🚑 📋 📈 (Claude / rules)"]
+    AGENTS --> DB[(SQLite)]
+    DB --> DASH["Coach Team Dashboard<br/>(token-gated)"]
+  end
 ```
-Browser ──▶ MediaPipe Pose (on-device, WebAssembly + GPU)
-   │            └─▶ Biomechanics engine (rep detection, form scoring)
-   │
-   └─▶ FastAPI backend ──▶ 4 parallel AI agents (Claude / rules fallback)
-                 │
-              SQLite ──▶ Athlete Readiness Report ──▶ Dashboard
-```
-
-Video never leaves the browser — only anonymized joint-angle stats reach the backend.
 
 ## 🚀 Run it
 
