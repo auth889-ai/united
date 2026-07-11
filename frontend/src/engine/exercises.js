@@ -287,29 +287,45 @@ class JumpingJackAnalyzer {
 
 class HighKneesAnalyzer {
   constructor() { this.reset(); }
-  reset() { this.lastLeg = null; this.up = false; }
+  reset() { this.lastLeg = null; this.up = false; this.driveLeg = null; this.peakLift = 0; this.lastRepMetrics = null; this.shallowStreak = 0; }
   update(lm) {
     if (vis(lm, LM.L_KNEE, LM.R_KNEE, LM.L_HIP, LM.R_HIP) < 0.5) {
       return { phase: "—", repDone: false, repScore: null, cues: [{ text: "Step back — I need your hips and knees in frame.", level: P.INFO }] };
     }
     const lift = 0.03; // knee meaningfully above hip line
-    const leftUp = lm[LM.L_KNEE].y < lm[LM.L_HIP].y - lift;
-    const rightUp = lm[LM.R_KNEE].y < lm[LM.R_HIP].y - lift;
+    const liftOf = (knee, hip) => lm[hip].y - lm[knee].y; // + = knee above hip
+    const leftLift = liftOf(LM.L_KNEE, LM.L_HIP);
+    const rightLift = liftOf(LM.R_KNEE, LM.R_HIP);
     const cues = [];
     let repDone = false, repScore = null;
 
-    if (!this.up && (leftUp || rightUp)) {
-      const leg = leftUp ? "L" : "R";
+    if (!this.up && (leftLift > lift || rightLift > lift)) {
       this.up = true;
-      if (leg !== this.lastLeg) { // alternation = a real running stride
-        this.lastLeg = leg;
-        repDone = true;
-        repScore = 100;
+      this.driveLeg = leftLift > rightLift ? "L" : "R";
+      this.peakLift = Math.max(leftLift, rightLift);
+    } else if (this.up) {
+      this.peakLift = Math.max(this.peakLift, this.driveLeg === "L" ? leftLift : rightLift);
+      if (leftLift <= lift && rightLift <= lift) {
+        // stride complete — score it by how high the knee actually drove
+        this.up = false;
+        if (this.driveLeg !== this.lastLeg) { // alternation = a real running stride
+          this.lastLeg = this.driveLeg;
+          repDone = true;
+          // full credit for a hip-height+ drive (~0.10 of frame), scaled down to
+          // 70 for a knee that barely cleared the counting threshold
+          repScore = Math.min(100, Math.round(70 + ((this.peakLift - lift) / 0.07) * 30));
+          this.lastRepMetrics = { lift: Math.round(this.peakLift * 100) };
+          if (this.peakLift < 0.06) {
+            this.shallowStreak++;
+            if (this.shallowStreak >= 3) {
+              cues.push({ text: "Drive your knees higher — up to hip height!", level: P.WARN });
+              this.shallowStreak = 0;
+            }
+          } else this.shallowStreak = 0;
+        }
       }
-    } else if (this.up && !leftUp && !rightUp) {
-      this.up = false;
     }
-    return { phase: this.up ? "Drive" : "Ready", repDone, repScore, cues };
+    return { phase: this.up ? "Drive" : "Ready", repDone, repScore, cues, repMetrics: repDone ? this.lastRepMetrics : null };
   }
 }
 

@@ -246,8 +246,12 @@ function loop() {
       drawingUtils.drawConnectors(lm, PoseLandmarker.POSE_CONNECTIONS, { color: "#7d7bff", lineWidth: 3 });
       drawingUtils.drawLandmarks(lm, { color: "#ffffff", fillColor: "#ffffff", radius: 3 });
       if (state.running) { onFrame(lm); drawAngles(lm); }
+      state.missedFrames = 0;
     } else if (state.running) {
-      setCue("I can't see you — step into frame.", "warn");
+      // Fast movement (high knees, jacks) drops single frames constantly —
+      // only complain after ~1s of genuinely lost tracking.
+      state.missedFrames = (state.missedFrames || 0) + 1;
+      if (state.missedFrames > 25) setCue("I can't see you — step into frame.", "warn");
     }
   }
   state.rafId = requestAnimationFrame(loop);

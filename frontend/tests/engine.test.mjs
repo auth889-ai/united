@@ -86,6 +86,26 @@ for (const leg of ["L", null, "R", null, "L", null, "L", null, "R", null]) {
 // L, R, L count; the second consecutive L is rejected (no alternation), final R counts
 check(`high knees: alternation enforced (got ${strides}, want 4)`, strides === 4);
 
+// --- high knees: drive height is scored, not just counted ---
+function kneeLiftPose(leg, lift) { // lift = how far the knee rises above the hip
+  const lm = new Array(33).fill(null).map(() => ({ x: 0.5, y: 0.5, z: 0, visibility: 1 }));
+  lm[23] = { x: 0.46, y: 0.55, z: 0, visibility: 1 }; lm[24] = { x: 0.54, y: 0.55, z: 0, visibility: 1 };
+  lm[25] = { x: 0.46, y: leg === "L" ? 0.55 - lift : 0.75, z: 0, visibility: 1 };
+  lm[26] = { x: 0.54, y: leg === "R" ? 0.55 - lift : 0.75, z: 0, visibility: 1 };
+  return lm;
+}
+function strideScore(analyzer, leg, lift) {
+  let score = null;
+  for (let i = 0; i < 4; i++) analyzer.update(kneeLiftPose(leg, lift));
+  for (let i = 0; i < 4; i++) { const r = analyzer.update(kneeLiftPose(null, 0)); if (r.repDone) score = r.repScore; }
+  return score;
+}
+const kneesScored = EXERCISES.knees.make();
+const highDrive = strideScore(kneesScored, "L", 0.12);
+const shallowDrive = strideScore(kneesScored, "R", 0.04);
+check(`high knees: hip-height drive scores 100 (got ${highDrive})`, highDrive === 100);
+check(`high knees: shallow drive is penalized (got ${shallowDrive})`, shallowDrive !== null && shallowDrive < 85);
+
 
 // --- plank: straight line accrues held seconds; sag stops the clock ---
 function plankPose(sag) {
