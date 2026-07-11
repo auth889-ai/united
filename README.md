@@ -30,6 +30,10 @@ Built solo in under 48 hours for **United Hacks V7** (Sports track).
   video bytes uploaded (always 0), plus a local-only mode that sends nothing at all
 - **📐 Live telestration** — broadcast-style joint-angle readouts (knee/elbow degrees)
   drawn on the athlete in real time
+- **🧠 Coach's Review** — after every session, the local LLM studies your rep-by-rep
+  measurement timeline (when, what, by how many degrees) and writes a detailed
+  chronological review — like a coach who watched the whole set, citing rep numbers
+  and timestamps from the data
 - **👻 Movement Twin** — your best rep becomes *your* baseline: it replays as a translucent
   skeleton to race, and every rep that falls short gets a **measured deviation** — "Torso
   leaned 13° more than your best rep", "Depth 11° short of your best" — with fatigue

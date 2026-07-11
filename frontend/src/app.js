@@ -1,5 +1,5 @@
 import { EXERCISES, PRIORITY, LM, angle } from "./engine/exercises.js";
-import { speak, speakRep, speakQueued, setVoice, summarize, coachReply, coachReplyStream, liveCoachLine, getLLMConfig, setLLMConfig } from "./services/coach.js";
+import { speak, speakRep, speakQueued, setVoice, summarize, coachReply, coachReplyStream, coachReview, liveCoachLine, getLLMConfig, setLLMConfig } from "./services/coach.js";
 import { renderChart, renderTable } from "./ui/chart.js";
 import { voiceControlSupported, startVoiceControl, stopVoiceControl } from "./services/voice.js";
 import { requestReport } from "./ui/report.js";
@@ -31,6 +31,8 @@ const state = {
   reps: 0,
   scores: [],
   repTimes: [],          // performance.now() per completed rep (tempo analytics)
+  repHistory: [],        // full measurement timeline for the Coach's Review
+  sessionStart: 0,
   faults: {},            // cue text -> count
   rafId: null,
   lastVideoTime: -1,
@@ -350,6 +352,13 @@ function onFrame(lm) {
         state.faults[devs[0]] = (state.faults[devs[0]] || 0) + 1;
       }
     }
+    state.repHistory.push({
+      rep: state.reps,
+      atSeconds: Math.round((performance.now() - state.sessionStart) / 1000),
+      score: r.repScore,
+      metrics: r.repMetrics || undefined,
+      vsBest: twinDeviation || undefined,
+    });
     maybeSaveBestRep(r.repScore, r.repMetrics);
     checkFatigue();
     // Live AI commentary every 3rd rep — the LLM reacts to what the vision
@@ -461,6 +470,7 @@ function startSession() {
   state.reps = 0; state.scores = []; state.faults = {};
   state.repTimes = []; fatigueWarned = false;
   state.repFrames = []; state.bestRep = null; state.bestRepScore = -1; state.bestMetrics = null; ghostIdx = 0;
+  state.repHistory = []; state.sessionStart = performance.now();
   $("repCount").textContent = "0";
   updateScoreRing();
   $("btnSession").textContent = "Finish session";
@@ -523,6 +533,36 @@ function finishSession() {
 let lastSession = null;
 $("btnShare").onclick = () => lastSession && downloadShareCard(lastSession);
 
+async function renderCoachReview(session) {
+  const box = $("coachReview");
+  box.classList.add("hidden");
+  box.textContent = "";
+  if (!state.repHistory.length) return;
+  const timeline = {
+    exercise: session.exercise,
+    durationSeconds: Math.round((performance.now() - state.sessionStart) / 1000),
+    averageScore: session.avgScore,
+    fatigueDetected: fatigueWarned,
+    reps: state.repHistory,
+  };
+  let started = false;
+  const full = await coachReview(timeline, (sentence) => {
+    if (!started) {
+      started = true;
+      box.classList.remove("hidden");
+      box.textContent = "🧠 Coach's review: ";
+    }
+    box.textContent += sentence + " ";
+  });
+  if (full) {
+    const btn = document.createElement("button");
+    btn.className = "chip";
+    btn.textContent = "🔊 Read aloud";
+    btn.onclick = () => speak(full, { force: true });
+    box.appendChild(btn);
+  }
+}
+
 function showSummary(s) {
   lastSession = s;
   $("summary").classList.remove("hidden");
@@ -548,6 +588,7 @@ function showSummary(s) {
       ).join("")
     : "";
   $("summaryCoach").textContent = "🎙 Coach: " + summarize(s);
+  renderCoachReview(s);
   $("summary").scrollIntoView({ behavior: "smooth", block: "center" });
 }
 

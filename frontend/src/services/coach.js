@@ -235,3 +235,70 @@ export async function coachReplyStream(question, history, onSentence) {
     return { text: OFFLINE_MSG, engine: "offline" };
   }
 }
+
+// Coach's Review — after the session, the LLM studies the full rep-by-rep
+// measurement timeline (what happened, when, by how many degrees) and writes
+// a detailed chronological review. Real-time stays physics; depth comes after.
+export async function coachReview(timeline, onSentence) {
+  const cfg = getLLMConfig();
+  let endpoint, model, key;
+  if (cfg.endpoint && cfg.model) ({ endpoint, model, key } = cfg);
+  else if (await detectOllama()) {
+    endpoint = "http://localhost:11434/v1/chat/completions";
+    model = "llama3.2";
+    key = "";
+  } else return null;
+
+  const headers = { "Content-Type": "application/json" };
+  if (key) headers.Authorization = `Bearer ${key}`;
+  try {
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        model,
+        stream: true,
+        max_tokens: 400,
+        messages: [
+          { role: "system", content:
+            "You are a professional strength coach reviewing an athlete's session recording. " +
+            "You are given a rep-by-rep measurement timeline (rep number, seconds into the session, " +
+            "0-100 form score, joint angles, deviation vs the athlete's own best rep, faults, fatigue point). " +
+            "Write a chronological review in 120-180 words: what went well early, exactly when and how form " +
+            "changed (cite rep numbers, timestamps and degree values FROM THE DATA ONLY — never invent numbers), " +
+            "and end with the single most important fix. Warm, direct, second person." },
+          { role: "user", content: JSON.stringify(timeline) },
+        ],
+      }),
+    });
+    if (!res.ok) throw new Error(`LLM ${res.status}`);
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let buf = "", full = "", pending = "";
+    const flush = (force = false) => {
+      let m;
+      while ((m = pending.match(/^[\s\S]*?[.!?](\s|$)/))) {
+        const s = m[0].trim();
+        pending = pending.slice(m[0].length);
+        if (s.length > 1) onSentence(s);
+      }
+      if (force && pending.trim().length > 1) { onSentence(pending.trim()); pending = ""; }
+    };
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const lines = buf.split("\n");
+      buf = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith("data: ") || line.includes("[DONE]")) continue;
+        try {
+          const delta = JSON.parse(line.slice(6)).choices?.[0]?.delta?.content || "";
+          full += delta; pending += delta; flush();
+        } catch { /* partial */ }
+      }
+    }
+    flush(true);
+    return full.trim() || null;
+  } catch { return null; }
+}
