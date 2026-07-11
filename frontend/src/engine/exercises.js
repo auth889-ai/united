@@ -95,6 +95,7 @@ class SquatAnalyzer {
         this.state = "up";
         repDone = true;
         repScore = 100;
+        this.lastRepMetrics = { depth: Math.round(this.minKnee), lean: Math.round(this.maxLean) };
         if (this.minKnee > 105) { repScore -= 30; cues.push({ text: "Too shallow — aim to get thighs near parallel.", level: P.WARN }); }
         else if (this.minKnee > 95) { repScore -= 12; }
         if (this.maxLean > 50) repScore -= 25;
@@ -104,7 +105,7 @@ class SquatAnalyzer {
         this.minKnee = 180; this.maxLean = 0; this.valgus = false;
       }
     }
-    return { phase: this.state === "down" ? "Down" : "Up", repDone, repScore, cues };
+    return { phase: this.state === "down" ? "Down" : "Up", repDone, repScore, cues, repMetrics: repDone ? this.lastRepMetrics : null };
   }
 }
 
@@ -138,6 +139,7 @@ class PushupAnalyzer {
         this.state = "up";
         repDone = true;
         repScore = 100;
+        this.lastRepMetrics = { depth: Math.round(this.minElbow), line: Math.round(this.worstLine) };
         if (this.minElbow > 100) { repScore -= 25; cues.push({ text: "Go lower — chest toward the floor.", level: P.WARN }); }
         if (this.worstLine < 155) repScore -= 25;
         else if (this.worstLine < 165) repScore -= 10;
@@ -145,7 +147,7 @@ class PushupAnalyzer {
         this.minElbow = 180; this.worstLine = 180;
       }
     }
-    return { phase: this.state === "down" ? "Down" : "Up", repDone, repScore, cues };
+    return { phase: this.state === "down" ? "Down" : "Up", repDone, repScore, cues, repMetrics: repDone ? this.lastRepMetrics : null };
   }
 }
 
@@ -171,6 +173,7 @@ class CurlAnalyzer {
         this.state = "extended";
         repDone = true;
         repScore = 100;
+        this.lastRepMetrics = { extension: Math.round(this.minElbow), drift: Math.round(this.maxDrift) };
         if (this.minElbow > 60) { repScore -= 15; cues.push({ text: "Squeeze all the way up at the top.", level: P.INFO }); }
         if (this.maxDrift > 35) repScore -= 25;
         else if (this.maxDrift > 25) repScore -= 10;
@@ -178,7 +181,7 @@ class CurlAnalyzer {
         this.minElbow = 180; this.maxDrift = 0;
       }
     }
-    return { phase: this.state === "flexed" ? "Curling" : "Extended", repDone, repScore, cues };
+    return { phase: this.state === "flexed" ? "Curling" : "Extended", repDone, repScore, cues, repMetrics: repDone ? this.lastRepMetrics : null };
   }
 }
 

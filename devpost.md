@@ -35,9 +35,9 @@ FormCoach AI watches you train and coaches you in real time:
   push-ups, curls), explosive power (vertical jump), and conditioning/agility
   (jumping jacks, high knees — football and basketball staples) — each with its own
   joint-angle state machine over 33 tracked body landmarks.
-- **Scores every rep 0–100** against the same faults a physiotherapist checks —
-  squat depth, torso lean, body-line collapse, elbow drift — and shows a live
-  form-score ring.
+- **Scores every rep 0–100** against common form-risk patterns — squat depth, torso
+  lean, body-line collapse, elbow drift — and shows a live form-score ring.
+  (A coaching aid, not a medical diagnostic tool.)
 - **Speaks corrections out loud** ("Chest up — you're leaning too far forward")
   via the Web Speech API, prioritized by injury risk, so you never look at a
   screen mid-set.
@@ -49,8 +49,8 @@ FormCoach AI watches you train and coaches you in real time:
 - **A real conversation, hands-free.** Commands ("squats", "start", "finish") are
   obeyed instantly — and anything else you say is answered out loud by the AI coach:
   "what should I fix first?" mid-set gets a spoken answer from your own session data.
-  Voice in, voice out — the first workout coach **blind and low-vision athletes can
-  use entirely eyes-free**.
+  Voice in, voice out — designed for **complete eyes-free operation**, so blind and
+  low-vision athletes can train independently.
 - **Guided workouts, run by voice.** Pick sets × reps; the coach counts you through
   every set, calls rest with a countdown, and announces the next set — a complete
   training product, not a detector.
@@ -89,7 +89,7 @@ Browser → MediaPipe Pose (on-device WASM+GPU) → Biomechanics engine (rep FSM
                                      SQLite → Athlete Readiness Report → Dashboard
 ```
 
-- **MediaPipe Pose Landmarker** (lite model, GPU delegate) for 33-landmark
+- **MediaPipe Pose Landmarker** (full model, GPU delegate) for 33-landmark
   tracking at ~30fps in the browser.
 - **A biomechanics engine I wrote from scratch** (`frontend/src/engine/exercises.js`): vector math
   for joint angles, per-exercise finite-state machines for rep detection, and a
@@ -107,9 +107,20 @@ Browser → MediaPipe Pose (on-device WASM+GPU) → Biomechanics engine (rep FSM
 - Optional **LLM coach chat** through any OpenAI-compatible endpoint, with a
   rules-based fallback so the demo always works offline.
 
-## 🤔 How it's different (yes, rep counters exist — this isn't one)
+## 🤔 How it's different (yes, other pose trainers exist — I checked)
 
-Pose-based rep counters exist on GitHub. Here is what none of them do, and FormCoach does:
+I searched GitHub before claiming anything: rep counters, form scorers, even
+voice-coaching trainers exist. FormCoach's difference is one idea the others
+don't have, plus a combination that's genuinely uncommon:
+
+**The Movement Twin.** Every other trainer compares you against fixed thresholds —
+the same numbers for every human body. FormCoach captures *your own best rep* as a
+private baseline, replays it as a ghost skeleton to race, and measures every
+following rep against it: *"Torso leaned 13° more than your best rep." "Depth 11°
+short of your best."* And when fatigue breaks your form, it names the exact rep
+where the decline started. Your coach isn't a threshold — it's you, at your best.
+
+The uncommon combination around it:
 
 | Existing pose demos / fitness apps | FormCoach AI |
 |---|---|

@@ -20,7 +20,7 @@ Built solo in under 48 hours for **United Hacks V7** (Sports track).
   by voice: counts you through each set, calls rest periods with a countdown, announces
   the next set
 - **🧑‍🏫 Coach Team Dashboard** — one backend serves a whole squad: every athlete's
-  sessions, form trends, and injury-risk flags in one view (`http://localhost:8001/dashboard?key=coach-demo` — token-gated; set `COACH_KEY` env to change it)
+  sessions, form trends, and injury-risk flags in one view (`http://localhost:8001/dashboard?key=coach-demo` — token-gated, runs wherever the backend is deployed; the public live demo is frontend-only)
 - **👤 Zero-knowledge accounts** — email + password sign-in where the password never
   leaves the device and each user's history is **AES-256-GCM encrypted at rest** with a
   key derived from her password (PBKDF2, 150k iterations). On a shared machine, another
@@ -30,8 +30,10 @@ Built solo in under 48 hours for **United Hacks V7** (Sports track).
   video bytes uploaded (always 0), plus a local-only mode that sends nothing at all
 - **📐 Live telestration** — broadcast-style joint-angle readouts (knee/elbow degrees)
   drawn on the athlete in real time
-- **👻 Ghost rep** — your best-scoring rep replays as a translucent skeleton over you,
-  so every rep races your own best form
+- **👻 Movement Twin** — your best rep becomes *your* baseline: it replays as a translucent
+  skeleton to race, and every rep that falls short gets a **measured deviation** — "Torso
+  leaned 13° more than your best rep", "Depth 11° short of your best" — with fatigue
+  detection naming the exact rep where your form began declining
 - **📼 Analyze ANY video** — upload a recording, or **capture your screen** and point it
   at a playing YouTube video: the engine overlays the skeleton and coaches the athlete
   in the video live
@@ -44,14 +46,13 @@ Built solo in under 48 hours for **United Hacks V7** (Sports track).
 - **Real-time pose tracking** — 33 body landmarks at ~30fps (MediaPipe **full** model),
   EMA-smoothed for stable angles and a steady skeleton overlay
 - **Biomechanics engine** — joint-angle state machines detect reps and phases; each rep
-  is scored against the same faults a physio checks (depth, body line, elbow drift, torso lean)
+  is scored against common form-risk patterns (depth, body line, elbow drift, torso lean)
 - **Voice coaching** — the highest-priority fault is spoken via the Web Speech API, so you
   never look at the screen mid-set
 - **Hands-free voice control AND conversation** — say "squats", "start", "finish" and the
   app obeys; ask it anything else ("what should I fix first?", "give me a plan") and the
-  coach **answers out loud**. A full voice-in/voice-out coaching conversation, making it
-  the first workout coach that **blind and low-vision athletes can use entirely eyes-free**
-  (Chrome/Edge)
+  coach **answers out loud**. Designed for **complete eyes-free operation**, so blind and
+  low-vision athletes can train independently (Chrome/Edge)
 - **Progress tracking** — per-session form scores charted over time (with an accessible table view)
 - **AI coach chat** — a built-in rules coach that knows your session stats; optionally plug
   in **Ollama** (`http://localhost:11434/v1/chat/completions`, model `llama3.2`, no key —
@@ -113,7 +114,7 @@ your whole body is in frame, and press **Start session**.
 ## 🧠 How it works
 
 1. **Pose estimation** — [MediaPipe Pose Landmarker](https://developers.google.com/mediapipe)
-   (lite model, GPU delegate) tracks 33 landmarks per frame, fully on-device.
+   (**full** model, GPU delegate) tracks 33 landmarks per frame, fully on-device.
 2. **Biomechanics** — for each exercise, a state machine over joint angles
    (hip–knee–ankle for squats, shoulder–elbow–wrist for push-ups/curls,
    shoulder–hip–ankle for body line) detects rep phases and completions.
@@ -181,3 +182,6 @@ Both suites run automatically in CI on every push.
 
 MIT. Pose estimation by Google MediaPipe. Everything else written from scratch
 during the United Hacks V7 hacking window.
+
+FormCoach AI is a training aid, not a medical device — it flags common form-risk
+patterns and does not diagnose or prevent injury.

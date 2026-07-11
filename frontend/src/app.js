@@ -6,6 +6,7 @@ import { requestReport } from "./ui/report.js";
 import { downloadShareCard } from "./ui/share.js";
 import { demoPose } from "./engine/demo.js";
 import { createSmoother } from "./engine/smooth.js";
+import { compareToBaseline } from "./engine/twin.js";
 import { register, signIn, signOut, resume, currentUser, loadVault, saveVault } from "./services/auth.js";
 import {
   PoseLandmarker, FilesetResolver, DrawingUtils,
@@ -26,6 +27,7 @@ const state = {
   repFrames: [],         // landmark frames of the current rep
   bestRep: null,         // frames of the best-scoring rep this session
   bestRepScore: -1,
+  bestMetrics: null,     // per-rep metrics of the best rep (Movement Twin baseline)
   reps: 0,
   scores: [],
   repTimes: [],          // performance.now() per completed rep (tempo analytics)
@@ -179,10 +181,12 @@ function recordFrame(lm) {
   }
 }
 
-function maybeSaveBestRep(score) {
+function maybeSaveBestRep(score, metrics) {
   if (score !== null && score >= state.bestRepScore && state.repFrames.length > 5) {
     state.bestRep = state.repFrames;
     state.bestRepScore = score;
+    state.bestMetrics = metrics || state.bestMetrics;
+    if (state.reps === 1) speak("Personal best captured. Now match it.", { force: true });
   }
   state.repFrames = [];
 }
@@ -297,8 +301,9 @@ function checkFatigue() {
   const avg = s.reduce((x, y) => x + y, 0) / s.length;
   if (a > b && b > c && c < avg - 10) {
     fatigueWarned = true;
-    setCue("Fatigue detected — form is dropping. Rest before your next set.", "warn");
-    speak("Your form is dropping. Take a rest before the next set.", { force: true });
+    const declineRep = s.length - 2;
+    setCue(`Form began declining after rep ${declineRep} — rest before your next set.`, "warn");
+    speak(`Your form began declining after rep ${declineRep}. Take a rest before the next set.`, { force: true });
   }
 }
 
@@ -333,7 +338,16 @@ function onFrame(lm) {
     state.reps++;
     if (r.repScore !== null) state.scores.push(r.repScore);
     state.repTimes.push(performance.now());
-    maybeSaveBestRep(r.repScore);
+    // Movement Twin: measure this rep against the athlete's own best
+    if (state.bestMetrics && r.repMetrics && r.repScore < state.bestRepScore) {
+      const devs = compareToBaseline(state.exercise, state.bestMetrics, r.repMetrics);
+      if (devs.length) {
+        setCue(devs[0], "warn");
+        speak(devs[0]);
+        state.faults[devs[0]] = (state.faults[devs[0]] || 0) + 1;
+      }
+    }
+    maybeSaveBestRep(r.repScore, r.repMetrics);
     checkFatigue();
     $("repCount").textContent = state.reps;
     if (state.exercise === "jump" && state.analyzer.lastJumpCm) {
@@ -423,7 +437,7 @@ function startSession() {
   state.running = true;
   state.reps = 0; state.scores = []; state.faults = {};
   state.repTimes = []; fatigueWarned = false;
-  state.repFrames = []; state.bestRep = null; state.bestRepScore = -1; ghostIdx = 0;
+  state.repFrames = []; state.bestRep = null; state.bestRepScore = -1; state.bestMetrics = null; ghostIdx = 0;
   $("repCount").textContent = "0";
   updateScoreRing();
   $("btnSession").textContent = "Finish session";
@@ -753,7 +767,7 @@ $("localOnly").addEventListener("change", () => {
 $("ghostToggle").onclick = () => {
   state.ghost = !state.ghost;
   $("ghostToggle").setAttribute("aria-pressed", state.ghost);
-  $("ghostToggle").textContent = state.ghost ? "👻 Ghost rep on" : "👻 Ghost rep off";
+  $("ghostToggle").textContent = state.ghost ? "👻 Movement Twin on" : "👻 Movement Twin off";
 };
 
 $("tableToggle").onclick = () => {
