@@ -492,3 +492,13 @@ button { font: inherit; cursor: pointer; }
 }
 .notebook-session summary { cursor: pointer; font-weight: 600; font-size: 0.92rem; }
 #visionReport { white-space: pre-line; }
+
+/* ---------- hosted-page local-AI banner ---------- */
+.lan-banner {
+  background: #fff3cd; color: #663c00; border-bottom: 1px solid #e0c068;
+  padding: 0.6rem 1rem; font-size: 0.92rem; text-align: center;
+  display: flex; gap: 0.6rem; align-items: center; justify-content: center; flex-wrap: wrap;
+}
+.lan-banner a { color: #5e5ce6; }
+.lan-small { font-size: 0.8rem; opacity: 0.8; }
+.lan-banner button { border: 0; background: none; cursor: pointer; font-size: 1rem; }

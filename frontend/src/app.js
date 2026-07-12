@@ -617,6 +617,19 @@ async function renderCoachReview(session) {
 }
 
 
+/* hosted page + blocked local AI -> show the escape hatch prominently */
+if (location.protocol === "https:") {
+  $("lanDismiss").onclick = () => $("lanBanner").classList.add("hidden");
+  const checkLan = async () => {
+    try {
+      const r = await fetch("http://localhost:11434/api/tags", { targetAddressSpace: "loopback", signal: AbortSignal.timeout(2500) });
+      $("lanBanner").classList.toggle("hidden", r.ok);
+    } catch { $("lanBanner").classList.remove("hidden"); }
+  };
+  checkLan();
+  setInterval(checkLan, 20000);
+}
+
 /* ============ session flip-book: one downloadable book per session ============ */
 
 const esc = (t) => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
