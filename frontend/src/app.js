@@ -1082,7 +1082,9 @@ let memoryRec = null;
 let voiceLoop = { active: false, target: "chat", listening: false };
 
 function isStopPhrase(text) {
-  return /\b(stop|exit|goodbye|quit|cancel voice|stop listening)\b/i.test(text);
+  // only short, direct commands — "should I stop leaning?" is a question
+  return text.trim().split(/\s+/).length <= 4
+    && /\b(stop|exit|goodbye|quit|cancel voice|stop listening)\b/i.test(text);
 }
 
 function setVoiceLoopUI(active, target = "chat", label = "") {
@@ -1114,6 +1116,7 @@ function listenOnce(target = "chat") {
     $("micToggle").textContent = "🎤 Voice control";
   }
   if (!voiceLoop.active || voiceLoop.listening) return;
+  if (speechSynthesis.speaking) { setTimeout(() => listenOnce(target), 300); return; }
   if (memoryRec) memoryRec.stop();
   voiceLoop.listening = true;
   setVoiceLoopUI(true, target, "Listening…");
@@ -1124,6 +1127,10 @@ function listenOnce(target = "chat") {
   memoryRec.onresult = async (e) => {
     const last = e.results[e.results.length - 1];
     const text = last[0].transcript;
+    // without headphones the mic picks up the coach's own voice — discard
+    // ANYTHING heard while the coach is talking, before any other handling
+    // (this once made the coach hear its own "say stop" and stop itself)
+    if (speechSynthesis.speaking) return;
     if (!last.isFinal) {
       $("memoryVoiceStatus").textContent = `🎙 Heard: “${text.trim()}…”`;
       return;
@@ -1133,12 +1140,6 @@ function listenOnce(target = "chat") {
     if (isStopPhrase(text)) {
       stopVoiceLoop("Voice chat stopped.");
       await speakCoachText("Voice chat stopped.");
-      return;
-    }
-    // without headphones the mic can pick up the coach's own voice — never
-    // treat that as the athlete talking
-    if (speechSynthesis.speaking) {
-      if (voiceLoop.active) setTimeout(() => listenOnce(target), 400);
       return;
     }
     await askCoach(text, { speakAnswer: true });
@@ -1238,7 +1239,8 @@ async function toggleVoiceLoop(target = "chat") {
   voiceLoop.target = target;
   if (!(await startMicMeter())) { voiceLoop.active = false; return; }
   setVoiceLoopUI(true, target, "Voice chat on. Listening after the beep.");
-  await speakCoachText("Voice chat on. Ask me anything. Say stop when you are done.");
+  await speakCoachText("Voice chat on. Ask me anything.");
+  $("memoryVoiceStatus").textContent = "🎙 Listening — say \"goodbye\" or press the button to end.";
   listenOnce(target);
 }
 
