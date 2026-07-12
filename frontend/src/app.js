@@ -981,11 +981,24 @@ function speakCoachText(text) {
   const cleanSentences = sentences.map((s) => s.trim()).filter(Boolean);
   if (!cleanSentences.length) return Promise.resolve();
   return new Promise((resolve) => {
-    let remaining = cleanSentences.length;
-    const done = () => {
-      remaining--;
-      if (remaining <= 0) resolve();
+    let settled = false, ticks = 0;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      clearInterval(watch);
+      clearTimeout(cap);
+      resolve();
     };
+    // Chrome silently drops utterance end events — poll the engine itself
+    // (skipping the first ticks while speech spins up) and hard-cap, so a
+    // lost event can never freeze the voice loop again.
+    const watch = setInterval(() => {
+      ticks++;
+      if (ticks > 3 && !speechSynthesis.speaking && !speechSynthesis.pending) finish();
+    }, 300);
+    const cap = setTimeout(finish, Math.min(30000, 3000 + text.length * 80));
+    let remaining = cleanSentences.length;
+    const done = () => { if (--remaining <= 0) finish(); };
     for (const sentence of cleanSentences) {
       const u = new SpeechSynthesisUtterance(sentence);
       u.rate = 1.05;
@@ -1116,10 +1129,19 @@ function listenOnce(target = "chat") {
       await speakCoachText("Voice chat stopped.");
       return;
     }
-    await askCoach(text, { speakAnswer: true });
-    if (voiceLoop.active) {
-      setTimeout(() => listenOnce(target), 250);
+    // without headphones the mic can pick up the coach's own voice — never
+    // treat that as the athlete talking
+    if (speechSynthesis.speaking) {
+      if (voiceLoop.active) setTimeout(() => listenOnce(target), 400);
+      return;
     }
+    await askCoach(text, { speakAnswer: true });
+    const relisten = () => {
+      if (!voiceLoop.active) return;
+      if (speechSynthesis.speaking) { setTimeout(relisten, 400); return; }
+      listenOnce(target);
+    };
+    setTimeout(relisten, 250);
   };
   memoryRec.onerror = () => {
     $("memoryVoiceStatus").textContent = "Could not hear that. Type the question or try again.";
