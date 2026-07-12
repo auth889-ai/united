@@ -166,6 +166,19 @@ The new idea isn't "detect a squat." It's **turning a webcam into a complete, sa
   The trick: calibrate against the athlete's own body — average the standing
   nose-to-ankle length over 30 frames, then use the user's real height as the
   scale factor.
+- **Chrome vs. local AI.** The hardest bug of the weekend: the hosted app suddenly
+  couldn't reach Ollama while localhost worked perfectly. Root cause: Chrome's new
+  Local Network Access rule silently blocks public HTTPS pages from loopback
+  addresses. Fix: every AI request now declares `targetAddressSpace: "loopback"`,
+  turning a silent block into a one-click permission prompt — plus an in-app banner
+  that explains it and links to the local app.
+- **Fallbacks that tell the truth.** A mistyped API endpoint in settings used to
+  kill the chat entirely. Now the app probes the configured endpoint, falls back to
+  auto-detected local Ollama, and the engine tag under every reply names the model
+  that actually answered — the AI is never silently swapped or faked.
+- **A coach that finishes its sentences.** Naive TTS cancels the current utterance
+  for every new line, so the coach kept cutting itself off mid-word. Now routine
+  lines queue behind the current sentence and only critical safety cues interrupt.
 - **Coaching cadence.** My first version screamed at me every single frame like a fire alarm with opinions. Speaking every fault every frame is unbearable. Cues are
   prioritized (critical > warning > info) and throttled, and a held bad position
   counts as one fault, not hundreds.
