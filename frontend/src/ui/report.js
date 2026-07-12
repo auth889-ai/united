@@ -11,6 +11,8 @@ export async function requestReport(session, history) {
 
   try {
     const res = await fetch(`${BACKEND}/api/analyze`, {
+      // hosted-page -> local backend needs Chrome's loopback permission hint
+      targetAddressSpace: "loopback",
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ session, history }),

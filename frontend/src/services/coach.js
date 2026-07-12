@@ -53,6 +53,15 @@ export function summarize(session) {
 /* ---------------- optional LLM (OpenAI-compatible, e.g. Featherless) ---------------- */
 
 const CFG_KEY = "formcoach.llm";
+// Chrome's Local Network Access rule: a public HTTPS page must declare that a
+// request targets the loopback address, or the browser silently blocks it.
+// With this hint Chrome shows a permission prompt instead — one click, then
+// the hosted app can talk to local Ollama like the localhost app does.
+const isLocalUrl = (u) => /^https?:\/\/(localhost|127\.0\.0\.1)[:/]/.test(u);
+function aiFetch(url, init = {}) {
+  return fetch(url, isLocalUrl(url) ? { ...init, targetAddressSpace: "loopback" } : init);
+}
+
 export function getLLMConfig() {
   try { return JSON.parse(localStorage.getItem(CFG_KEY)) || {}; } catch { return {}; }
 }
@@ -63,7 +72,7 @@ async function llmReply(question, history, override) {
   const stats = history.slice(-5);
   const headers = { "Content-Type": "application/json" };
   if (cfg.key) headers.Authorization = `Bearer ${cfg.key}`; // Ollama needs no key
-  const res = await fetch(cfg.endpoint, {
+  const res = await aiFetch(cfg.endpoint, {
     method: "POST",
     headers,
     body: JSON.stringify({
@@ -95,7 +104,7 @@ async function detectOllama() {
   if (ollamaDetected === false && Date.now() - lastCheck < 15000) return false;
   lastCheck = Date.now();
   try {
-    const res = await fetch("http://localhost:11434/api/tags", { signal: AbortSignal.timeout(1500) });
+    const res = await aiFetch("http://localhost:11434/api/tags", { signal: AbortSignal.timeout(1500) });
     ollamaDetected = res.ok;
   } catch { ollamaDetected = false; }
   return ollamaDetected;
@@ -109,7 +118,7 @@ async function resolveEngine() {
     try {
       const headers = { "Content-Type": "application/json" };
       if (cfg.key) headers.Authorization = `Bearer ${cfg.key}`;
-      const probe = await fetch(cfg.endpoint, {
+      const probe = await aiFetch(cfg.endpoint, {
         method: "POST",
         headers,
         body: JSON.stringify({ model: cfg.model, max_tokens: 1, messages: [{ role: "user", content: "ping" }] }),
@@ -128,7 +137,10 @@ async function resolveEngine() {
 // if no AI engine is reachable, the coach says so honestly.
 const OFFLINE_MSG =
   "⚠ AI coach offline. Start Ollama on this machine (ollama serve, model llama3.2) " +
-  "or add an API key in ⚙ settings — then ask me again.";
+  "or add an API key in ⚙ settings — then ask me again." +
+  (location.protocol === "https:"
+    ? " On this hosted page your browser may ask permission to reach local Ollama — click Allow, or open the app at http://localhost:8000 for zero-prompt local AI."
+    : "");
 
 export async function coachReply(question, history) {
   const cfg = getLLMConfig();
@@ -158,7 +170,7 @@ export async function liveCoachLine(snapshot) {
   if (liveBusy || !(await detectOllama())) return null;
   liveBusy = true;
   try {
-    const res = await fetch("http://localhost:11434/v1/chat/completions", {
+    const res = await aiFetch("http://localhost:11434/v1/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -213,7 +225,7 @@ export async function coachReplyStream(question, history, onSentence) {
   const headers = { "Content-Type": "application/json" };
   if (key) headers.Authorization = `Bearer ${key}`;
   try {
-    const res = await fetch(endpoint, {
+    const res = await aiFetch(endpoint, {
       method: "POST",
       headers,
       body: JSON.stringify({
@@ -283,7 +295,7 @@ export async function coachReview(timeline, onSentence) {
   const headers = { "Content-Type": "application/json" };
   if (key) headers.Authorization = `Bearer ${key}`;
   try {
-    const res = await fetch(endpoint, {
+    const res = await aiFetch(endpoint, {
       method: "POST",
       headers,
       body: JSON.stringify({
@@ -341,7 +353,7 @@ const VISION_HINTS = /vision|llava|moondream|gemma3|minicpm|qwen2\.5vl|qwen2-vl/
 
 export async function findVisionModel() {
   try {
-    const res = await fetch("http://localhost:11434/api/tags", { signal: AbortSignal.timeout(1500) });
+    const res = await aiFetch("http://localhost:11434/api/tags", { signal: AbortSignal.timeout(1500) });
     const models = (await res.json()).models || [];
     return models.map((m) => m.name).find((n) => VISION_HINTS.test(n)) || null;
   } catch { return null; }
@@ -359,7 +371,7 @@ export async function visionReport(shots, timeline, onSentence) {
     const head = `\n\n⏱ ${stamp} — ${s.text}\n`;
     full += head; onSentence(head);
     try {
-      const res = await fetch("http://localhost:11434/api/chat", {
+      const res = await aiFetch("http://localhost:11434/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -409,7 +421,7 @@ export async function liveVisionLine(imgDataUrl, model, exercise) {
   if (eyesInFlight) return null;
   eyesInFlight = true;
   try {
-    const res = await fetch("http://localhost:11434/api/chat", {
+    const res = await aiFetch("http://localhost:11434/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
