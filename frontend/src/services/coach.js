@@ -6,12 +6,15 @@ const SPEAK_COOLDOWN_MS = 2500;
 
 export function setVoice(on) { voiceOn = on; if (!on) speechSynthesis.cancel(); }
 
-export function speak(text, { force = false } = {}) {
+export function speak(text, { force = false, interrupt = false } = {}) {
   if (!voiceOn || !("speechSynthesis" in window)) return;
   const now = performance.now();
   if (!force && now - lastSpokenAt < SPEAK_COOLDOWN_MS) return;
   lastSpokenAt = now;
-  speechSynthesis.cancel();
+  // Never cut the coach off mid-word for routine lines: queue behind the
+  // current sentence. Interrupt only for urgent safety cues, or when a
+  // backlog is already waiting (newest info wins over a stale queue).
+  if (interrupt || speechSynthesis.pending) speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
   u.rate = 1.05;
   speechSynthesis.speak(u);
@@ -150,6 +153,7 @@ export async function coachReply(question, history) {
 // engine is seeing right now (reps, scores, Twin deviations, fatigue).
 // Fires only when a local LLM is available; never blocks the video loop.
 let liveBusy = false;
+let recentLines = []; // anti-repetition memory for spoken commentary
 export async function liveCoachLine(snapshot) {
   if (liveBusy || !(await detectOllama())) return null;
   liveBusy = true;
@@ -160,17 +164,23 @@ export async function liveCoachLine(snapshot) {
       body: JSON.stringify({
         model: "llama3.2",
         max_tokens: 40,
+        temperature: 1.1,
         messages: [
           { role: "system", content:
             "You are a live workout voice coach. Reply with ONE short spoken line, " +
-            "under 18 words, energetic and specific to the JSON data. No emojis, no quotes." },
+            "under 18 words, energetic and specific to the JSON data. No emojis, no quotes." +
+            (recentLines.length
+              ? " You already said these — say something DIFFERENT in wording and angle: " + JSON.stringify(recentLines)
+              : "") },
           { role: "user", content: JSON.stringify(snapshot) },
         ],
       }),
       signal: AbortSignal.timeout(6000),
     });
     const data = await res.json();
-    return data.choices?.[0]?.message?.content?.trim() || null;
+    const line = data.choices?.[0]?.message?.content?.trim() || null;
+    if (line) recentLines = [...recentLines.slice(-3), line];
+    return line;
   } catch {
     return null;
   } finally {
@@ -394,6 +404,7 @@ export async function visionReport(shots, timeline, onSentence) {
 // snapshot and speaks one short line about what it actually sees. Fully
 // on-device; a frame is analyzed only if the previous one has finished.
 let eyesInFlight = false;
+let recentEyesLines = [];
 export async function liveVisionLine(imgDataUrl, model, exercise) {
   if (eyesInFlight) return null;
   eyesInFlight = true;
@@ -411,15 +422,20 @@ export async function liveVisionLine(imgDataUrl, model, exercise) {
             `You are watching an athlete do ${exercise} live through a camera ` +
             "(skeleton overlay drawn on them). In ONE short spoken coaching line " +
             "(max 14 words), tell them what you see about their body position. " +
-            "No preamble, just the line.",
+            "No preamble, just the line." +
+            (recentEyesLines.length
+              ? ` You already said these — observe something DIFFERENT: ${JSON.stringify(recentEyesLines)}`
+              : ""),
           images: [imgDataUrl.split(",")[1]],
         }],
       }),
       signal: AbortSignal.timeout(15_000),
     });
     if (!res.ok) return null;
-    const text = (await res.json()).message?.content?.trim();
-    return text ? text.replace(/^["']|["']$/g, "") : null;
+    let text = (await res.json()).message?.content?.trim();
+    text = text ? text.replace(/^["']|["']$/g, "") : null;
+    if (text) recentEyesLines = [...recentEyesLines.slice(-2), text];
+    return text;
   } catch { return null; }
   finally { eyesInFlight = false; }
 }

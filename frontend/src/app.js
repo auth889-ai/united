@@ -343,7 +343,7 @@ function onFrame(lm) {
     const top = r.cues.sort((a, b) => b.level - a.level)[0];
     setCue(top.text, top.level === PRIORITY.CRITICAL ? "bad" : top.level === PRIORITY.WARN ? "warn" : "good");
     if (top.level >= PRIORITY.WARN) {
-      speak(vary(top.text));
+      speak(vary(top.text), { interrupt: top.level === PRIORITY.CRITICAL });
       // a held bad position counts as one fault, not one per frame
       const now = performance.now();
       if (top.text !== lastFault.text || now - lastFault.at > 3000) {
