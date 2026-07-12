@@ -28,6 +28,23 @@ function leanFromVertical(top, bottom) {
   return Math.abs((Math.atan2(dx, -dy) * 180) / Math.PI);
 }
 
+function torsoLean(lm) {
+  const shoulder = {
+    x: (lm[LM.L_SHOULDER].x + lm[LM.R_SHOULDER].x) / 2,
+    y: (lm[LM.L_SHOULDER].y + lm[LM.R_SHOULDER].y) / 2,
+  };
+  const hip = {
+    x: (lm[LM.L_HIP].x + lm[LM.R_HIP].x) / 2,
+    y: (lm[LM.L_HIP].y + lm[LM.R_HIP].y) / 2,
+  };
+  return leanFromVertical(shoulder, hip);
+}
+
+function hipDeviation(lm, s) {
+  const expectedHipY = (lm[s.shoulder].y + lm[s.ankle].y) / 2;
+  return lm[s.hip].y - expectedHipY;
+}
+
 function vis(lm, ...ids) {
   return ids.reduce((s, i) => s + (lm[i]?.visibility ?? 0), 0) / ids.length;
 }
@@ -111,7 +128,7 @@ class SquatAnalyzer {
 
 class PushupAnalyzer {
   constructor() { this.reset(); }
-  reset() { this.state = "up"; this.minElbow = 180; this.worstLine = 180; this.downFrames = 0; this.readyFrames = 0; }
+  reset() { this.state = "up"; this.minElbow = 180; this.worstLine = 180; this.worstHip = 0; this.downFrames = 0; this.readyFrames = 0; }
   update(lm) {
     const s = bestSide(lm);
     if (vis(lm, s.shoulder, s.elbow, s.wrist, s.hip) < 0.5) {
@@ -128,6 +145,16 @@ class PushupAnalyzer {
         return { phase: "—", repDone: false, repScore: null, cues: [{ text: "You're facing the camera — turn side-on so I can judge depth and body line.", level: P.WARN }] };
       }
     }
+    // Kneeling, sitting or standing between sets is NOT a push-up — the body
+    // must be roughly horizontal before any posture judgment happens
+    // (otherwise "hips sagging, 64 degrees" fires at someone tying a shoelace).
+    const refFoot = (lm[s.ankle]?.visibility ?? 0) > 0.5 ? s.ankle : s.hip;
+    const spanX = Math.abs(lm[s.shoulder].x - lm[refFoot].x);
+    const spanY = Math.abs(lm[s.shoulder].y - lm[refFoot].y);
+    if (spanY > spanX) {
+      this.readyFrames = 0;
+      return { phase: "—", repDone: false, repScore: null, cues: [{ text: "Get into push-up position — body horizontal, side-on to the camera.", level: P.INFO }] };
+    }
     // Warm-up: getting into position looks like sagging hips — give the
     // athlete a second to settle before judging posture.
     this.readyFrames++;
@@ -136,10 +163,15 @@ class PushupAnalyzer {
     // garbage angles and false "hips sagging" alarms.
     const ankleVisible = (lm[s.ankle]?.visibility ?? 0) > 0.5;
     const bodyLine = ankleVisible ? angle(lm[s.shoulder], lm[s.hip], lm[s.ankle]) : 180;
+    const hipDev = ankleVisible ? hipDeviation(lm, s) : 0;
     const cues = [];
     let repDone = false, repScore = null;
 
-    if (bodyLine < 155 && this.readyFrames > 30) cues.push({ text: "Hips sagging — squeeze your glutes, straight body line.", say: `Hips sagging — your body line is ${Math.round(bodyLine)} degrees. Squeeze your glutes, get to one-seventy.`, level: P.CRITICAL });
+    if ((bodyLine < 155 || hipDev > 0.08) && this.readyFrames > 30) {
+      cues.push({ text: "Hips sagging — squeeze your glutes, straight body line.", say: `Hips sagging — your body line is ${Math.round(bodyLine)} degrees. Squeeze your glutes, get to one-seventy.`, level: P.CRITICAL });
+    } else if (hipDev < -0.08 && this.readyFrames > 30) {
+      cues.push({ text: "Hips too high — make one straight line from shoulders to ankles.", level: P.WARN });
+    }
 
     // Enter "down" at 115° so shallow push-ups still register (and get scored down).
     if (this.state === "up" && elbow < 115) { this.state = "down"; this.downFrames = 0; }
@@ -147,19 +179,20 @@ class PushupAnalyzer {
       this.downFrames++;
       this.minElbow = Math.min(this.minElbow, elbow);
       this.worstLine = Math.min(this.worstLine, bodyLine);
+      this.worstHip = Math.max(this.worstHip, Math.abs(hipDev));
       if (elbow > 150 && this.downFrames < 6) { // a noise blip, not a rep
-        this.state = "up"; this.minElbow = 180; this.worstLine = 180;
+        this.state = "up"; this.minElbow = 180; this.worstLine = 180; this.worstHip = 0;
       } else if (elbow > 150) {
         this.state = "up";
         repDone = true;
         repScore = 100;
-        this.lastRepMetrics = { depth: Math.round(this.minElbow), line: Math.round(this.worstLine) };
+        this.lastRepMetrics = { depth: Math.round(this.minElbow), line: Math.round(this.worstLine), hip: Math.round(this.worstHip * 100) };
         if (this.minElbow > 110) { repScore -= 40; cues.push({ text: "Half rep — bend those elbows past ninety degrees.", say: `Half rep — your elbows stopped at ${Math.round(this.minElbow)} degrees. Bend past ninety.`, level: P.WARN }); }
         else if (this.minElbow > 95) { repScore -= 25; cues.push({ text: "Go lower — chest toward the floor.", say: `Almost — ${Math.round(this.minElbow)} degrees at the elbow. A little lower to hit ninety.`, level: P.WARN }); }
-        if (this.worstLine < 155) repScore -= 25;
+        if (this.worstLine < 155 || this.worstHip > 0.08) repScore -= 25;
         else if (this.worstLine < 165) repScore -= 10;
         if (repScore >= 90) cues.push({ text: "Clean push-up, nice line!", level: P.INFO });
-        this.minElbow = 180; this.worstLine = 180;
+        this.minElbow = 180; this.worstLine = 180; this.worstHip = 0;
       }
     }
     return { phase: this.state === "down" ? "Down" : "Up", repDone, repScore, cues, repMetrics: repDone ? this.lastRepMetrics : null };
@@ -168,14 +201,15 @@ class PushupAnalyzer {
 
 class CurlAnalyzer {
   constructor() { this.reset(); }
-  reset() { this.state = "extended"; this.minElbow = 180; this.maxDrift = 0; this.flexFrames = 0; }
+  reset() { this.state = "extended"; this.minElbow = 180; this.maxDrift = 0; this.maxSwing = 0; this.flexFrames = 0; }
   update(lm) {
     const s = bestSide(lm);
     if (vis(lm, s.shoulder, s.elbow, s.wrist) < 0.5) {
       return { phase: "—", repDone: false, repScore: null, cues: [{ text: "Move so your arm is fully in frame.", level: P.INFO }] };
     }
     const elbow = angle(lm[s.shoulder], lm[s.elbow], lm[s.wrist]);
-    const drift = leanFromVertical(lm[s.shoulder], lm[s.elbow]); // upper arm swing
+    const drift = Math.abs(lm[s.elbow].x - lm[s.shoulder].x); // upper arm leaves the shoulder line
+    const swing = vis(lm, LM.L_SHOULDER, LM.R_SHOULDER, LM.L_HIP, LM.R_HIP) > 0.5 ? torsoLean(lm) : 0;
     const cues = [];
     let repDone = false, repScore = null;
 
@@ -186,20 +220,21 @@ class CurlAnalyzer {
       this.flexFrames++;
       this.minElbow = Math.min(this.minElbow, elbow);
       this.maxDrift = Math.max(this.maxDrift, drift);
-      if (drift > 30) cues.push({ text: "Pin your elbow to your side — no swinging.", level: P.WARN });
+      this.maxSwing = Math.max(this.maxSwing, swing);
+      if (drift > 0.06 || swing > 15) cues.push({ text: "Pin your elbow to your side — no swinging.", level: P.WARN });
       if (elbow > 150 && this.flexFrames < 4) { // noise blip, not a rep
-        this.state = "extended"; this.minElbow = 180; this.maxDrift = 0;
+        this.state = "extended"; this.minElbow = 180; this.maxDrift = 0; this.maxSwing = 0;
       } else if (elbow > 150) {
         this.state = "extended";
         repDone = true;
         repScore = 100;
-        this.lastRepMetrics = { extension: Math.round(this.minElbow), drift: Math.round(this.maxDrift) };
+        this.lastRepMetrics = { extension: Math.round(this.minElbow), drift: Math.round(this.maxDrift * 100), swing: Math.round(this.maxSwing) };
         if (this.minElbow > 80) { repScore -= 30; cues.push({ text: "Curl higher — bring the weight all the way up.", say: `Curl higher — you stopped at ${Math.round(this.minElbow)} degrees. Squeeze past sixty.`, level: P.WARN }); }
         else if (this.minElbow > 60) { repScore -= 15; cues.push({ text: "Squeeze all the way up at the top.", level: P.INFO }); }
-        if (this.maxDrift > 35) repScore -= 25;
-        else if (this.maxDrift > 25) repScore -= 10;
+        if (this.maxDrift > 0.08 || this.maxSwing > 20) repScore -= 25;
+        else if (this.maxDrift > 0.06 || this.maxSwing > 15) repScore -= 10;
         if (repScore >= 90) cues.push({ text: "Strict curl — textbook.", level: P.INFO });
-        this.minElbow = 180; this.maxDrift = 0;
+        this.minElbow = 180; this.maxDrift = 0; this.maxSwing = 0;
       }
     }
     return { phase: this.state === "flexed" ? "Curling" : "Extended", repDone, repScore, cues, repMetrics: repDone ? this.lastRepMetrics : null };
@@ -362,10 +397,13 @@ class PlankAnalyzer {
       return { phase: "—", repDone: false, repScore: null, cues: [{ text: "Get side-on to the camera so I can see your body line.", level: P.INFO }] };
     }
     const line = angle(lm[s.shoulder], lm[s.hip], lm[s.ankle]);
+    const hipDev = hipDeviation(lm, s);
+    const hipSagging = hipDev > 0.06;
+    const hipPiked = hipDev < -0.06;
     const cues = [];
     let repDone = false, repScore = null;
 
-    if (line >= 165) {
+    if (line >= 165 && !hipSagging && !hipPiked) {
       this.holding = true;
       this.goodFrames++;
       const sec = Math.floor(this.goodFrames / 30);
@@ -377,8 +415,10 @@ class PlankAnalyzer {
         if (sec > 0 && sec % 10 === 0) cues.push({ text: `${sec} seconds — rock solid!`, level: P.INFO });
       }
     } else {
-      if (this.holding && line < 150) {
+      if (this.holding && (line < 150 || hipSagging)) {
         cues.push({ text: "Hips sagging — squeeze your glutes, straighten that line.", level: P.CRITICAL });
+      } else if (this.holding && hipPiked) {
+        cues.push({ text: "Hips too high — lower them until your body is one straight line.", level: P.WARN });
       } else if (this.holding) {
         cues.push({ text: "Line is drifting — brace your core.", level: P.WARN });
       }
@@ -407,6 +447,8 @@ class PressAnalyzer {
     const elbow = angle(lm[s.shoulder], lm[s.elbow], lm[s.wrist]);
     const torsoLen = lm[s.hip].y - lm[s.shoulder].y;
     const lean = torsoLen > 0.12 ? leanFromVertical(lm[s.shoulder], lm[s.hip]) : 0;
+    const kneeVisible = (lm[s.knee]?.visibility ?? 0) > 0.5 && lm[s.knee].y > lm[s.hip].y + 0.08;
+    const torsoAngle = kneeVisible ? angle(lm[s.shoulder], lm[s.hip], lm[s.knee]) : 180;
     const cues = [];
     let repDone = false, repScore = null;
 
@@ -414,8 +456,9 @@ class PressAnalyzer {
     if (this.state === "press") {
       this.pressFrames++;
       this.maxElbow = Math.max(this.maxElbow, elbow);
-      this.maxLean = Math.max(this.maxLean, lean);
-      if (lean > 20) cues.push({ text: "You're leaning back — ribs down, squeeze your glutes.", level: P.CRITICAL });
+      this.maxLean = Math.max(this.maxLean, Math.max(lean, 180 - torsoAngle));
+      if (lean > 20 || torsoAngle < 140) cues.push({ text: "You're leaning back — ribs down, squeeze your glutes.", level: P.CRITICAL });
+      else if (torsoAngle < 160) cues.push({ text: "Small back arch — brace your abs before the next press.", level: P.WARN });
       if (elbow < 100 && this.pressFrames < 4) { // noise blip, not a rep
         this.state = "rack"; this.maxElbow = 0; this.maxLean = 0;
       } else if (elbow < 100) { // bar back at the rack — rep complete

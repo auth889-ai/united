@@ -7,8 +7,8 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException
 
-from . import agents, db
-from .models import AnalyzeRequest
+from . import agents, db, memory
+from .models import AnalyzeRequest, CoachChatRequest, MemorySyncRequest
 
 router = APIRouter(prefix="/api")
 
@@ -55,6 +55,28 @@ async def analyze(req: AnalyzeRequest) -> dict:
     conn.commit()
     conn.close()
     return report
+
+
+@router.post("/memory/sync")
+def memory_sync(req: MemorySyncRequest) -> dict:
+    stored = memory.sync_sessions(req.athlete, req.sessions)
+    return {
+        "ok": True,
+        "stored": stored,
+        "context": memory.memory_context(req.athlete),
+    }
+
+
+@router.post("/coach/chat")
+async def coach_chat(req: CoachChatRequest) -> dict:
+    if not req.question.strip():
+        raise HTTPException(status_code=422, detail="Question is required")
+    return await memory.coach_chat(
+        req.athlete,
+        req.question.strip(),
+        req.sessions,
+        req.chatHistory,
+    )
 
 
 @router.get("/reports")

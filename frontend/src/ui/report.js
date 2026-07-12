@@ -12,7 +12,8 @@ export async function requestReport(session, history) {
   try {
     const res = await fetch(`${BACKEND}/api/analyze`, {
       // hosted-page -> local backend needs Chrome's loopback permission hint
-      targetAddressSpace: "loopback",
+      // (but the hint BREAKS fetches from a localhost page — https only)
+      ...(location.protocol === "https:" ? { targetAddressSpace: "loopback" } : {}),
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ session, history }),
@@ -26,7 +27,7 @@ export async function requestReport(session, history) {
   } catch {
     body.innerHTML =
       `<p class="report-status">Backend offline — the live demo still works fully in-browser. ` +
-      `To enable the multi-agent report, run:<br><code>cd backend && pip install -r requirements.txt && uvicorn main:app --port 8001</code></p>`;
+      `To enable the multi-agent report, run:<br><code>cd backend && pip install -r requirements.txt && uvicorn app.main:app --port 8001</code></p>`;
   }
 }
 

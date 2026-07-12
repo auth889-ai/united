@@ -207,7 +207,24 @@
       <form id="chatForm" class="chat-form">
         <input id="chatInput" type="text" placeholder="Ask about your form, your score, your next steps…" autocomplete="off" />
         <button class="btn btn-primary" type="submit">Send</button>
+        <button type="button" id="btnVoiceChat" class="btn btn-ghost" title="Speak to the memory coach">🎙 Ask</button>
         <button type="button" id="btnSettings" class="btn btn-ghost" title="LLM settings">⚙</button>
+      </form>
+    </div>
+    <div class="chat memory-chat" aria-live="polite">
+      <div class="memory-head">
+        <div>
+          <h3>Voice memory coach</h3>
+          <p id="memoryVoiceStatus">Ready to remember your sessions.</p>
+        </div>
+        <button id="memoryVoiceToggle" class="chip" aria-pressed="false" type="button">🎙 Talk</button>
+      </div>
+      <div id="memoryVoiceLog" class="chat-log">
+        <div class="msg msg-coach">Ask about your remembered sessions, faults, visual notes, or next training plan.</div>
+      </div>
+      <form id="memoryAskForm" class="chat-form">
+        <input id="memoryAskInput" type="text" placeholder="Ask the memory coach…" autocomplete="off" />
+        <button class="btn btn-primary" type="submit">Ask</button>
       </form>
     </div>
   </section>

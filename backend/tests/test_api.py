@@ -86,3 +86,34 @@ def test_reports_carry_athlete():
     client.post("/api/analyze", json={"session": {**SESSION, "athlete": "Test Athlete"}, "history": []})
     latest = client.get("/api/reports?limit=1&key=coach-demo").json()[0]
     assert latest["athlete"] == "Test Athlete"
+
+
+def test_memory_sync_builds_athlete_context():
+    marker = f"memory-{uuid.uuid4().hex[:12]}"
+    session = {
+        **SESSION,
+        "athlete": marker,
+        "errorLog": [{"at": 4, "rep": 2, "text": "Chest up — you're leaning too far forward."}],
+        "visionShots": [{"at": 4, "stamp": "0:04", "fault": "lean", "note": "Torso folds forward; brace and keep chest tall."}],
+    }
+    r = client.post("/api/memory/sync", json={"athlete": marker, "sessions": [session]})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["ok"] is True
+    assert marker in body["context"]
+    assert "Chest up" in body["context"]
+    assert "Torso folds forward" in body["context"]
+
+
+def test_memory_coach_answers_from_saved_faults():
+    marker = f"coach-{uuid.uuid4().hex[:12]}"
+    session = {**SESSION, "athlete": marker}
+    r = client.post(
+        "/api/coach/chat",
+        json={"athlete": marker, "question": "What fault should I fix first?", "sessions": [session]},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["text"]
+    assert body["engine"].startswith("memory")
+    assert "Most repeated faults" in body["memory"]

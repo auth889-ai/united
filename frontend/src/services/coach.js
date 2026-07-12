@@ -57,9 +57,12 @@ const CFG_KEY = "formcoach.llm";
 // request targets the loopback address, or the browser silently blocks it.
 // With this hint Chrome shows a permission prompt instead — one click, then
 // the hosted app can talk to local Ollama like the localhost app does.
-const isLocalUrl = (u) => /^https?:\/\/(localhost|127\.0\.0\.1)[:/]/.test(u);
+const isLocalUrl = (u) => /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])[:/]/.test(u);
+// The hint is ONLY for public https pages — adding it on a localhost page
+// makes Chrome fail the fetch outright.
+const needsHint = location.protocol === "https:";
 function aiFetch(url, init = {}) {
-  return fetch(url, isLocalUrl(url) ? { ...init, targetAddressSpace: "loopback" } : init);
+  return fetch(url, needsHint && isLocalUrl(url) ? { ...init, targetAddressSpace: "loopback" } : init);
 }
 
 export function getLLMConfig() {
@@ -99,15 +102,44 @@ async function llmReply(question, history, override) {
 // every 15s (Ollama may start after the page loads).
 let ollamaDetected = null;
 let lastCheck = 0;
-async function detectOllama() {
-  if (ollamaDetected === true) return true;
-  if (ollamaDetected === false && Date.now() - lastCheck < 15000) return false;
+let ollamaModels = null;
+async function getOllamaModels() {
+  if (ollamaModels && Date.now() - lastCheck < 15000) return ollamaModels;
+  if (ollamaDetected === false && Date.now() - lastCheck < 15000) return null;
   lastCheck = Date.now();
   try {
     const res = await aiFetch("http://localhost:11434/api/tags", { signal: AbortSignal.timeout(1500) });
-    ollamaDetected = res.ok;
-  } catch { ollamaDetected = false; }
+    if (!res.ok) throw new Error("ollama tags failed");
+    ollamaModels = (await res.json()).models || [];
+    ollamaDetected = true;
+    return ollamaModels;
+  } catch {
+    ollamaModels = null;
+    ollamaDetected = false;
+    return null;
+  }
+}
+
+async function detectOllama() {
+  if (ollamaDetected === true) return true;
+  await getOllamaModels();
   return ollamaDetected;
+}
+
+const VISION_HINTS = /vision|llava|bakllava|moondream|minicpm|qwen2\.5vl|qwen2-vl|gemma3/i;
+const TEXT_HINTS = /llama|mistral|qwen|gemma|phi|deepseek|command|mixtral|olmo|smollm/i;
+const TEXT_AVOID = /vision|llava|bakllava|moondream|minicpm|qwen2\.5vl|qwen2-vl|clip|embed/i;
+
+function modelNames(models) {
+  return (models || []).map((m) => m.name).filter(Boolean);
+}
+
+async function findTextModel() {
+  const names = modelNames(await getOllamaModels());
+  return names.find((n) => !TEXT_AVOID.test(n) && /llama3\.2/i.test(n))
+    || names.find((n) => !TEXT_AVOID.test(n) && TEXT_HINTS.test(n))
+    || names.find((n) => !TEXT_AVOID.test(n))
+    || null;
 }
 
 // Pick a reachable engine: a saved-but-broken ⚙ endpoint must not kill the
@@ -127,8 +159,9 @@ async function resolveEngine() {
       if (probe.ok) return { endpoint: cfg.endpoint, model: cfg.model, key: cfg.key || "", label: "🧠 " + cfg.model };
     } catch { /* unreachable — fall through to local */ }
   }
-  if (await detectOllama()) {
-    return { endpoint: "http://localhost:11434/v1/chat/completions", model: "llama3.2", key: "", label: "🧠 llama3.2 · local AI" };
+  const localModel = await findTextModel();
+  if (localModel) {
+    return { endpoint: "http://localhost:11434/v1/chat/completions", model: localModel, key: "", label: `🧠 ${localModel} · local AI` };
   }
   return null;
 }
@@ -136,8 +169,8 @@ async function resolveEngine() {
 // AI-only: configured LLM -> auto-detected local Ollama. No canned fallback —
 // if no AI engine is reachable, the coach says so honestly.
 const OFFLINE_MSG =
-  "⚠ AI coach offline. Start Ollama on this machine (ollama serve, model llama3.2) " +
-  "or add an API key in ⚙ settings — then ask me again." +
+  "⚠ AI coach offline. Start Ollama on this machine and pull a chat model, for example: ollama pull llama3.2. " +
+  "Or add an API key in ⚙ settings — then ask me again." +
   (location.protocol === "https:"
     ? " On this hosted page your browser may ask permission to reach local Ollama — click Allow, or open the app at http://localhost:8000 for zero-prompt local AI."
     : "");
@@ -148,14 +181,15 @@ export async function coachReply(question, history) {
     try { return { text: await llmReply(question, history), engine: "🧠 " + cfg.model }; }
     catch { /* configured endpoint is down/misconfigured — fall back to local Ollama */ }
   }
-  if (await detectOllama()) {
+  const localModel = await findTextModel();
+  if (localModel) {
     try {
       const text = await llmReply(question, history, {
         endpoint: "http://localhost:11434/v1/chat/completions",
-        model: "llama3.2",
+        model: localModel,
         key: "",
       });
-      return { text, engine: "🧠 llama3.2 · local AI" };
+      return { text, engine: `🧠 ${localModel} · local AI` };
     } catch { return { text: OFFLINE_MSG, engine: "offline" }; }
   }
   return { text: OFFLINE_MSG, engine: "offline" };
@@ -167,14 +201,15 @@ export async function coachReply(question, history) {
 let liveBusy = false;
 let recentLines = []; // anti-repetition memory for spoken commentary
 export async function liveCoachLine(snapshot) {
-  if (liveBusy || !(await detectOllama())) return null;
+  const model = await findTextModel();
+  if (liveBusy || !model) return null;
   liveBusy = true;
   try {
     const res = await aiFetch("http://localhost:11434/v1/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "llama3.2",
+        model,
         max_tokens: 40,
         temperature: 1.1,
         messages: [
@@ -216,6 +251,42 @@ export function speakQueued(text) {
 let chatTurns = [];
 export function resetChat() { chatTurns = []; }
 
+async function readStreamingText(res, onToken) {
+  const reader = res.body.getReader();
+  const dec = new TextDecoder();
+  let buf = "";
+  const parsePayload = (payload) => {
+    const raw = payload.trim();
+    if (!raw || raw === "[DONE]") return "";
+    try {
+      const data = JSON.parse(raw);
+      return data.choices?.[0]?.delta?.content
+        || data.choices?.[0]?.message?.content
+        || data.message?.content
+        || data.response
+        || "";
+    } catch {
+      return "";
+    }
+  };
+  const handleLine = (line) => {
+    const trimmed = line.trim();
+    if (!trimmed) return;
+    const payload = trimmed.startsWith("data:") ? trimmed.slice(5) : trimmed;
+    const token = parsePayload(payload);
+    if (token) onToken(token);
+  };
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    const lines = buf.split("\n");
+    buf = lines.pop();
+    for (const line of lines) handleLine(line);
+  }
+  if (buf.trim()) handleLine(buf);
+}
+
 export async function coachReplyStream(question, history, onSentence) {
   const eng = await resolveEngine();
   if (!eng) return { text: OFFLINE_MSG, engine: "offline" };
@@ -244,9 +315,7 @@ export async function coachReplyStream(question, history, onSentence) {
     });
     if (!res.ok) throw new Error(`LLM ${res.status}`);
 
-    const reader = res.body.getReader();
-    const dec = new TextDecoder();
-    let buf = "", full = "", pending = "";
+    let full = "", pending = "";
     const flush = (force = false) => {
       // emit complete sentences as they land
       let m;
@@ -257,22 +326,11 @@ export async function coachReplyStream(question, history, onSentence) {
       }
       if (force && pending.trim().length > 1) { onSentence(pending.trim()); pending = ""; }
     };
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buf += dec.decode(value, { stream: true });
-      const lines = buf.split("\n");
-      buf = lines.pop(); // keep partial line
-      for (const line of lines) {
-        if (!line.startsWith("data: ") || line.includes("[DONE]")) continue;
-        try {
-          const delta = JSON.parse(line.slice(6)).choices?.[0]?.delta?.content || "";
-          full += delta;
-          pending += delta;
-          flush();
-        } catch { /* partial JSON — ignored */ }
-      }
-    }
+    await readStreamingText(res, (delta) => {
+      full += delta;
+      pending += delta;
+      flush();
+    });
     flush(true);
     if (full.trim()) {
       chatTurns.push({ role: "user", content: question }, { role: "assistant", content: full.trim() });
@@ -315,9 +373,7 @@ export async function coachReview(timeline, onSentence) {
       }),
     });
     if (!res.ok) throw new Error(`LLM ${res.status}`);
-    const reader = res.body.getReader();
-    const dec = new TextDecoder();
-    let buf = "", full = "", pending = "";
+    let full = "", pending = "";
     const flush = (force = false) => {
       let m;
       while ((m = pending.match(/^[\s\S]*?[.!?](\s|$)/))) {
@@ -327,20 +383,9 @@ export async function coachReview(timeline, onSentence) {
       }
       if (force && pending.trim().length > 1) { onSentence(pending.trim()); pending = ""; }
     };
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buf += dec.decode(value, { stream: true });
-      const lines = buf.split("\n");
-      buf = lines.pop();
-      for (const line of lines) {
-        if (!line.startsWith("data: ") || line.includes("[DONE]")) continue;
-        try {
-          const delta = JSON.parse(line.slice(6)).choices?.[0]?.delta?.content || "";
-          full += delta; pending += delta; flush();
-        } catch { /* partial */ }
-      }
-    }
+    await readStreamingText(res, (delta) => {
+      full += delta; pending += delta; flush();
+    });
     flush(true);
     return full.trim() || null;
   } catch { return null; }
@@ -349,68 +394,90 @@ export async function coachReview(timeline, onSentence) {
 // Deep visual analysis — sends the fault snapshot IMAGES to a local vision
 // model (via Ollama), which looks at the actual frames and writes a detailed
 // report. Post-session by design: vision models are too slow for live use.
-const VISION_HINTS = /vision|llava|moondream|gemma3|minicpm|qwen2\.5vl|qwen2-vl/i;
-
 export async function findVisionModel() {
-  try {
-    const res = await aiFetch("http://localhost:11434/api/tags", { signal: AbortSignal.timeout(1500) });
-    const models = (await res.json()).models || [];
-    return models.map((m) => m.name).find((n) => VISION_HINTS.test(n)) || null;
-  } catch { return null; }
+  const names = modelNames(await getOllamaModels());
+  return names.find((n) => /moondream/i.test(n))
+    || names.find((n) => VISION_HINTS.test(n))
+    || null;
 }
 
 export async function visionReport(shots, timeline, onSentence) {
   const model = await findVisionModel();
   if (!model) return { error: "no-vision-model" };
-  // Small vision models reason best about ONE image at a time — walk the
-  // session chronologically, one timestamped snapshot per request.
-  // EVERY captured image is reviewed; nothing is skipped.
-  const picks = shots;
+  // Two-stage pipeline, one image at a time:
+  //   1) the small vision model DESCRIBES what it sees (its only strength)
+  //   2) llama3.2 turns that observation + the measured fault into a real
+  //      coach note: what is happening, why it matters, how to fix it.
+  // Tiny vision models asked to "coach" directly produce junk — splitting
+  // seeing from writing is what makes the walkthrough detailed and useful.
   let full = "";
-  for (const s of picks) {
+  const entries = [];
+  for (const s of shots) {
     const stamp = `${Math.floor(s.at / 60)}:${String(s.at % 60).padStart(2, "0")}`;
     const head = `\n\n⏱ ${stamp} — ${s.text}\n`;
     full += head; onSentence(head);
+    let note = "";
+    // stage 1 — eyes
+    let observed = "";
     try {
-      const res = await aiFetch("http://localhost:11434/api/chat", {
+      const seeRes = await aiFetch("http://localhost:11434/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model,
-          stream: true,
-          options: { num_predict: 90 },
+          stream: false,
+          options: { num_predict: 110 },
           messages: [{
             role: "user",
-            content:
-              `You are a strength coach. This photo shows an athlete at ${stamp} into a training session` +
-              (s.text === "form check" ? "." : `, when the measurement engine flagged: "${s.text}".`) +
-              " A skeleton overlay is drawn on them. In 1-2 sentences, describe what you SEE in their" +
-              " body position and give one concrete fix. Second person, no preamble.",
+            content: "Describe this person's body position in detail: torso, hips, arms, legs, and how bent or straight each is.",
             images: [s.img.split(",")[1]],
           }],
         }),
+        signal: AbortSignal.timeout(45_000),
       });
-      if (!res.ok) continue;
-      const reader = res.body.getReader();
-      const dec = new TextDecoder();
-      let buf = "";
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buf += dec.decode(value, { stream: true });
-        const lines = buf.split("\n");
-        buf = lines.pop();
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          try {
-            const chunk = JSON.parse(line).message?.content || "";
-            if (chunk) { full += chunk; onSentence(chunk); }
-          } catch { /* partial line */ }
-        }
+      if (seeRes.ok) observed = ((await seeRes.json()).message?.content || "").trim();
+    } catch { /* eyes failed — the writer still has the measured fault */ }
+    // stage 2 — writer
+    try {
+      const writeRes = await aiFetch("http://localhost:11434/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "llama3.2",
+          stream: true,
+          options: { num_predict: 130 },
+          messages: [
+            { role: "system", content:
+              "You are a precise strength coach writing one entry of a session review. " +
+              "Write 2-3 plain sentences, second person, no headings, no preamble: " +
+              "what is happening in the athlete's body, why it matters (injury or performance), " +
+              "and exactly how to fix it on the next rep. Never invent measurements." },
+            { role: "user", content:
+              `Moment: ${stamp} into the session. ` +
+              (s.text === "form check"
+                ? "Routine form-check photo (no fault was flagged). "
+                : `The measurement engine flagged: "${s.text}". `) +
+              (observed ? `A vision model looked at the photo and reported: "${observed}"` : "") },
+          ],
+        }),
+        signal: AbortSignal.timeout(45_000),
+      });
+      if (writeRes.ok) {
+        await readStreamingText(writeRes, (chunk) => {
+          note += chunk;
+          full += chunk;
+          onSentence(chunk);
+        });
       }
     } catch { /* skip this shot, keep walking the timeline */ }
+    entries.push({
+      at: s.at,
+      stamp,
+      fault: s.text,
+      note: note.trim() || "The local vision model could not describe this frame. Use the measured fault text and skeleton overlay for this page.",
+    });
   }
-  return { text: full.trim(), model };
+  return { text: full.trim(), model, entries };
 }
 
 // Mode 2 — AI Eyes: while you train, a local vision model looks at a live
