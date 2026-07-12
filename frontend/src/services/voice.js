@@ -13,7 +13,7 @@ const COMMANDS = [
   { intent: "squat",   re: /\bsquats?\b/ },
   { intent: "pushup",  re: /\b(push[- ]?ups?|press[- ]?ups?)\b/ },
   { intent: "curl",    re: /\b(curls?|biceps?)\b/ },
-  { intent: "jump",    re: /\b(jumps?|vertical)\b/ },
+  { intent: "jacks",   re: /\b(jumping jacks?|jacks?)\b/ },
   { intent: "press",   re: /\b(shoulder press|overhead|press)\b/ },
   { intent: "status",  re: /\b(how am i doing|score|status|how many)\b/ },
   { intent: "help",    re: /\b(help|what can i say|commands)\b/ },

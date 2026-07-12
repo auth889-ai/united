@@ -21,9 +21,8 @@ swinging curls: these are the exact faults that stall progress and cause the kne
 and back injuries that end amateur sports careers before they start.
 
 Meanwhile — exactly as this theme says — the World Cup and LeBron's Lakers exit have
-millions inspired to train right now. FormCoach speaks their language directly: the
-**vertical jump test** is how basketball scouts measure explosiveness (LeBron's was
-legendary), **high knees** are the footballer's core conditioning drill, and the
+millions inspired to train right now. FormCoach speaks their language directly:
+squats, push-ups and overhead presses are the strength base of every sport, and the
 **screen-capture analyzer** can coach form on any World Cup training clip on YouTube.
 The gap isn't motivation — it's feedback. I wanted to close that gap with nothing
 but the webcam everyone already owns.
@@ -31,11 +30,10 @@ but the webcam everyone already owns.
 ## 🏋️ What it does
 FormCoach AI watches you train and coaches you in real time:
 
-- **Eight drills across the four pillars every sport trains** — strength (squats,
-  push-ups, curls, shoulder press with a back-arch safety check), explosive power
-  (vertical jump), conditioning/agility (jumping jacks, high knees — football and
-  basketball staples), and core (an isometric plank with a live hold timer) — each
-  with its own joint-angle state machine over 33 tracked body landmarks.
+- **Five drills, every rep measured** — strength (squats, push-ups, bicep curls,
+  shoulder press with a lockout and back-arch safety check) and conditioning
+  (jumping jacks with a full-extension check) — each with its own joint-angle
+  state machine over 33 tracked body landmarks and its own fault vocabulary.
 - **Scores every rep 0–100** against common form-risk patterns — squat depth, torso
   lean, body-line collapse, elbow drift — and shows a live form-score ring.
   (A coaching aid, not a medical diagnostic tool.)
@@ -65,9 +63,6 @@ FormCoach AI watches you train and coaches you in real time:
 - **Speaks corrections out loud** ("Chest up — you're leaning too far forward")
   via the Web Speech API, prioritized by injury risk, so you never look at a
   screen mid-set.
-- **Measures your vertical jump in centimetres** with no equipment — it calibrates
-  your standing posture, then converts hip rise at the jump apex to real units
-  using your height.
 - **Tracks progress** with a per-session form-score chart (plus an accessible
   table view) stored locally.
 - **A real conversation, hands-free.** Commands ("squats", "start", "finish") are

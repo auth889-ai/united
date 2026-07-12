@@ -19,7 +19,12 @@ COACH_KEY = os.environ.get("COACH_KEY", "coach-demo")
 
 @router.get("/health")
 def health() -> dict:
-    return {"ok": True, "llm": agents.llm_enabled(), "engine": agents.engine_name()}
+    return {
+        "ok": True,
+        "llm": agents.llm_enabled(),
+        "engine": agents.engine_name(),
+        "memory": memory.memory_engine(),
+    }
 
 
 @router.post("/analyze")

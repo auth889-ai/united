@@ -69,10 +69,10 @@ Built solo in under 48 hours for **United Hacks V7** (Sports track).
 - **▶ Demo mode — no camera needed**: a synthetic athlete performs squats (including
   deliberately bad reps) through the same biomechanics engine, so judges and visitors
   see the AI coaching live in 5 seconds
-- **8 drills covering four athletic pillars** — *strength*: Squat · Push-up · Bicep curl ·
-  **Shoulder press** (lockout + back-arch safety check); *explosive power*: **Vertical
-  jump** (cm, no equipment); *conditioning & agility*: **Jumping jacks** · **High knees**;
-  *core stability*: **Plank** with a live body-line hold timer and sag detection
+- **5 drills, every rep measured** — *strength*: Squat · Push-up · Bicep curl ·
+  **Shoulder press** (lockout + back-arch safety check); *conditioning*:
+  **Jumping jacks** with a full-extension check — each drill has its own
+  joint-angle state machine and fault vocabulary
 - **Real-time pose tracking** — 33 body landmarks at ~30fps (MediaPipe **full** model),
   EMA-smoothed for stable angles and a steady skeleton overlay
 - **Biomechanics engine** — joint-angle state machines detect reps and phases; each rep
@@ -103,20 +103,40 @@ Built solo in under 48 hours for **United Hacks V7** (Sports track).
 ## 🏗 Architecture
 
 ```mermaid
-flowchart LR
-  subgraph Device["🔒 Your device — video never leaves"]
-    CAM["Camera / video file /<br/>screen capture / demo athlete"] --> POSE["MediaPipe Pose (full)<br/>WASM + GPU · 33 landmarks @30fps"]
-    POSE --> SMOOTH["EMA smoothing filter"]
-    SMOOTH --> ENGINE["Biomechanics engine<br/>rep FSMs · form scoring ·<br/>valgus/ACL · fatigue · telestration"]
-    ENGINE --> UI["Voice coach 🔊🎤 · HUD ·<br/>ghost rep · charts · share card"]
-    ENGINE --> VAULT["AES-256-GCM vault<br/>per-user encrypted history"]
-  end
-  ENGINE -- "anonymized stats only" --> API["FastAPI backend"]
-  subgraph Server["Backend (optional)"]
-    API --> AGENTS["4 parallel AI agents<br/>🦵 🚑 📋 📈 (Claude / rules)"]
-    AGENTS --> DB[(SQLite)]
-    DB --> DASH["Coach Team Dashboard<br/>(token-gated)"]
-  end
+flowchart TB
+    subgraph FRONTEND["🌐 FRONTEND — Browser · Vanilla JS · no build · installable PWA"]
+        direction LR
+        CAM["📷 Camera / video file /<br/>screen capture"] --> POSE["🕺 MediaPipe Pose<br/>33 landmarks @ 30 fps<br/>(WASM + GPU, on-device)"]
+        POSE --> ENGINE["⚙️ Biomechanics engine<br/>5 drill state machines<br/>rep count · form score 0–100"]
+        ENGINE --> VOICE["🔊🎤 Voice coach<br/>speaks cues · listens ·<br/>answers questions"]
+        ENGINE --> TWIN["👻 Movement Twin<br/>your best rep = baseline"]
+        ENGINE --> BOOK["📖 Session flip-book<br/>+ fault photo gallery"]
+        ENGINE --> VAULT["🔐 History vault<br/>AES-256-GCM in localStorage<br/>key from user password"]
+    end
+
+    FRONTEND -- "JSON numbers only<br/>(angles · scores · faults)<br/>🚫 NEVER video" --> ROUTES
+    FRONTEND -. "fault photos for<br/>local vision analysis" .-> OLLAMA
+
+    subgraph BACKEND["🚀 BACKEND — FastAPI · localhost:8001"]
+        direction LR
+        ROUTES["API routes<br/>/analyze · /coach/chat<br/>/memory/sync · /reports"] --> AGENTS["🤖 4 parallel AI agents<br/>🦵 Biomechanics · 🚑 Injury risk<br/>📋 Programming · 📈 Progress"]
+        ROUTES --> MEMSVC["🧩 Memory service<br/>exact stats (SQLite) +<br/>long-term profile (Memobase)"]
+    end
+
+    subgraph AI["🧠 LOCAL AI — Ollama · localhost:11434 · free, no API key"]
+        OLLAMA["Llama 3.1 8B — agents & coach chat<br/>Llama 3.2 — memory extraction<br/>moondream — sees fault photos"]
+    end
+
+    subgraph MEMOBASE["💾 MEMOBASE — Docker · localhost:8019 · self-hosted"]
+        MAPI["Memobase API<br/>builds athlete profile:<br/>faults · records · goals · injuries"] --> PG[("Postgres")]
+        MAPI --> RD[("Redis")]
+    end
+
+    AGENTS <--> OLLAMA
+    MEMSVC <--> MAPI
+    MAPI -. "profile extraction" .-> OLLAMA
+    AGENTS --> DB[("SQLite<br/>reports + sessions")]
+    DB --> DASH["🧑‍🏫 Coach Team Dashboard<br/>(token-gated)"]
 ```
 
 ## 🚀 Run it
@@ -151,10 +171,7 @@ your whole body is in frame, and press **Start session**.
    shoulder–hip–ankle for body line) detects rep phases and completions.
 3. **Form scoring** — each rep starts at 100 and loses points per fault
    (insufficient depth, torso lean > 50°, body-line collapse < 155°, elbow drift > 35°…).
-4. **Jump height** — hip landmarks are calibrated against your standing posture; hip
-   rise at the jump apex is converted from normalized units to centimetres using your
-   real height as the scale reference.
-5. **Coaching** — faults are prioritized (critical > warning > info) and spoken with a
+4. **Coaching** — faults are prioritized (critical > warning > info) and spoken with a
    cooldown so the coach talks like a human, not an alarm.
 
 ## 🛠 Stack

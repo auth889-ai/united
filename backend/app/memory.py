@@ -1,8 +1,13 @@
-"""Local athlete memory for the voice coach.
+"""Athlete memory for the voice coach — two layers.
 
-This mirrors the Memobase pattern from test3: compact events are archived, then
-a focused memory context is injected into the coach prompt. Exact session data
-stays in this app's SQLite database instead of requiring a separate service.
+Layer 1 (always on): exact session records in this app's SQLite database —
+ground truth for stats (scores, fault counts, PRs, recent conversation turns).
+
+Layer 2 (when the self-hosted Memobase server is up): every session and
+conversation is also archived to Memobase, whose LLM distills a long-term
+athlete profile — recurring faults, corrected faults, injuries, goals,
+coaching preferences. Both layers are injected into the coach prompt, so the
+coach remembers everything about each athlete across sessions.
 """
 
 from __future__ import annotations
@@ -13,7 +18,7 @@ from datetime import datetime, timezone
 
 import httpx
 
-from . import agents, db
+from . import agents, db, memobase_store
 from .models import Session
 
 
@@ -64,10 +69,16 @@ def sync_sessions(athlete: str, sessions: list[Session]) -> int:
                VALUES (?, ?, ?, ?, ?, ?)""",
             (athlete, key, session.date or _now(), "training_session", content, json.dumps(payload)),
         )
+        if cur.rowcount:  # new session -> archive to long-term Memobase memory too
+            memobase_store.record_session(athlete, content, session.date)
         changed += cur.rowcount
     conn.commit()
     conn.close()
     return changed
+
+
+def memory_engine() -> str:
+    return "memobase+sqlite" if memobase_store.available() else "sqlite"
 
 
 def remember_turn(athlete: str, role: str, content: str) -> None:
@@ -184,33 +195,61 @@ def fallback_answer(question: str, context: str) -> str:
 async def coach_chat(athlete: str, question: str, sessions: list[Session], chat_history: list[dict[str, str]]) -> dict:
     sync_sessions(athlete, sessions)
     context = memory_context(athlete, question)
+    long_term = memobase_store.athlete_context(athlete, question)
     remember_turn(athlete, "user", question)
 
+    name = athlete or "athlete"
+    system = (
+        f"You are FormCoach — {name}'s personal training coach, speaking OUT LOUD "
+        "(your words go straight to text-to-speech, and some of your athletes are blind).\n"
+        "How to talk:\n"
+        "- Warm, human, direct — like a coach at the athlete's side, not a report. "
+        "Use contractions. Use the athlete's name occasionally, not every sentence.\n"
+        "- 2 to 5 short sentences, unless they ask for a full plan. "
+        "No lists, no markdown, no emojis, no headings — spoken words only.\n"
+        "- End with one short, useful question or cue when it helps them act next.\n"
+        "What you know:\n"
+        "- LONG-TERM MEMORY is your distilled knowledge of this athlete from all past "
+        "sessions and talks. EXACT SESSION DATA is the precise recent record. "
+        "Both are ground truth — quote remembered facts naturally "
+        "('last session your squat depth came up short five times').\n"
+        "- Never invent numbers, sessions or faults. If memory doesn't cover it, say so "
+        "honestly and ask one short question instead.\n"
+        "- Celebrate real progress by name; be honest about declines without shaming.\n"
+        "- If they mention pain or injury: stop that exercise today, and see a "
+        "professional if it persists — you are a coach, not a doctor.\n\n"
+        f"LONG-TERM MEMORY of {name} (Memobase):\n{long_term or '(no long-term profile yet — this may be a new athlete)'}\n\n"
+        f"EXACT SESSION DATA:\n{context}"
+    )
+
     messages = [
-        {
-            "role": "system",
-            "content": (
-                "You are FormCoach, a voice-first coach for blind and low-vision athletes. "
-                "Use the athlete memory below as ground truth. Answer conversationally in 2-5 short sentences. "
-                "Name the remembered fault/session evidence when relevant. Never invent stats.\n\n"
-                + context
-            ),
-        },
+        {"role": "system", "content": system},
         *chat_history[-8:],
         {"role": "user", "content": question},
     ]
 
     if agents._ollama:
         try:
-            async with httpx.AsyncClient(timeout=35.0) as http:
+            # generous timeout: the live chat can queue behind Memobase's
+            # background memory-extraction job on the same local GPU
+            async with httpx.AsyncClient(timeout=120.0) as http:
                 res = await http.post(
                     f"{agents.OLLAMA_URL}/api/chat",
-                    json={"model": agents.OLLAMA_MODEL, "stream": False, "messages": messages},
+                    json={
+                        "model": agents.OLLAMA_MODEL,
+                        "stream": False,
+                        "messages": messages,
+                        "options": {"temperature": 0.6, "num_ctx": 8192},
+                    },
                 )
                 res.raise_for_status()
                 text = res.json()["message"]["content"].strip()
                 remember_turn(athlete, "assistant", text)
-                return {"text": text, "engine": f"ollama:{agents.OLLAMA_MODEL}", "memory": context}
+                memobase_store.record_chat(athlete, question, text)
+                engine = f"ollama:{agents.OLLAMA_MODEL}"
+                if long_term:
+                    engine += "+memobase"
+                return {"text": text, "engine": engine, "memory": context}
         except Exception:
             pass
 

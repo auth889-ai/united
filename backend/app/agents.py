@@ -16,17 +16,36 @@ from .models import AgentReport, Session
 
 MODEL = "claude-opus-4-8"
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
-OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llama3.2")
 
 
-def _ollama_available() -> bool:
+def _installed_models() -> list[str]:
     try:
-        return httpx.get(f"{OLLAMA_URL}/api/tags", timeout=1.0).status_code == 200
+        res = httpx.get(f"{OLLAMA_URL}/api/tags", timeout=1.0)
+        if res.status_code != 200:
+            return []
+        return [m["name"] for m in res.json().get("models", [])]
     except Exception:
-        return False
+        return []
 
 
-_ollama = _ollama_available()
+_installed = _installed_models()
+_ollama = bool(_installed)
+
+# Strongest installed model wins unless OLLAMA_MODEL pins one explicitly.
+_PREFERRED = ["llama3.1:8b", "llama3.2:latest", "llama3.2"]
+
+
+def _pick_model() -> str:
+    pinned = os.environ.get("OLLAMA_MODEL")
+    if pinned:
+        return pinned
+    for want in _PREFERRED:
+        if want in _installed:
+            return want
+    return _installed[0] if _installed else "llama3.2"
+
+
+OLLAMA_MODEL = _pick_model()
 
 AGENTS = [
     {
@@ -34,9 +53,16 @@ AGENTS = [
         "icon": "🦵",
         "name": "Biomechanics Agent",
         "prompt": (
-            "You are a biomechanics analyst. Score the athlete's movement technique "
-            "from the joint-angle fault data (each fault key is a coaching cue that "
-            "fired, with its count). Focus on movement quality only."
+            "You are the Biomechanics Agent — a movement-technique analyst. "
+            "In DATA, session.faults counts how many times each joint-angle fault fired "
+            "(insufficient_depth = squat above parallel; torso_lean = trunk pitched too far "
+            "forward; body_line_sag = hips dropped out of the head-heel line; elbow_drift = "
+            "elbows flared). session.avgScore is the physics engine's 0-100 average rep quality. "
+            "Score anchors: 90-100 clean technique (at most one rare fault); 70-89 solid with "
+            "one or two recurring faults; 50-69 clear technique breakdown; below 50 frequent "
+            "multiple faults. Start from avgScore and adjust by fault severity. "
+            "Each finding must name one fault key from the data with its exact count and one "
+            "short fix cue a coach would shout."
         ),
     },
     {
@@ -44,10 +70,15 @@ AGENTS = [
         "icon": "🚑",
         "name": "Injury Risk Agent",
         "prompt": (
-            "You are an injury-prevention specialist. Map each recorded fault to the "
-            "specific injury risk it creates (e.g. forward torso lean under load -> "
-            "lumbar stress; knees caving -> ACL/MCL stress; hips sagging in push-ups "
-            "-> lower-back strain). Score 100 = very low risk."
+            "You are the Injury Risk Agent — an injury-prevention specialist. Map each fault "
+            "in DATA to the tissue it stresses: torso_lean under load -> lumbar spine; "
+            "knees_in / valgus -> ACL and MCL; body_line_sag -> lower-back hyperextension; "
+            "elbow_drift -> shoulder impingement; insufficient_depth alone is a quality issue, "
+            "not an injury risk — do not list it as dangerous. "
+            "Score = safety: start at 100 and subtract about 5-8 points per occurrence of a "
+            "genuinely risky fault; never go below 20 for bodyweight training. "
+            "Each finding: fault name, its count, and the joint or tissue at risk. "
+            "You describe risk patterns — never diagnose."
         ),
     },
     {
@@ -55,9 +86,14 @@ AGENTS = [
         "icon": "📋",
         "name": "Programming Agent",
         "prompt": (
-            "You are a strength & conditioning programmer. Based on this session and "
-            "the athlete's history trend, prescribe the next week of training: sets, "
-            "reps, and the one cue to prioritize. Score = readiness to progress load."
+            "You are the Programming Agent — a strength and conditioning planner. From DATA, "
+            "prescribe next week concretely: exact sets x reps for this exercise, the ONE cue "
+            "to prioritize (the most frequent fault), and the promotion rule (progress "
+            "difficulty only after averaging 85+ form for two sessions). "
+            "Score = readiness to progress: 85-100 progress now; 70-84 hold difficulty and fix "
+            "the top fault; below 70 reduce difficulty or slow the tempo. Base it on "
+            "session.avgScore and the fault counts. Findings must contain the actual "
+            "prescription with numbers, e.g. '3 sessions of 3x12 squats, tempo 3-1-1'."
         ),
     },
     {
@@ -65,9 +101,15 @@ AGENTS = [
         "icon": "📈",
         "name": "Progress Agent",
         "prompt": (
-            "You are a progress analyst. Compare this session against the athlete's "
-            "history: is form trending up, flat, or down? Call out personal records "
-            "(reps, form score, jump height). Score = momentum, 50 = flat trend."
+            "You are the Progress Agent — a trend analyst. Compare session.avgScore with the "
+            "avgScore values in recent_history for the SAME exercise. "
+            "CAREFUL WITH DIRECTION: if today's avgScore is HIGHER than the history average, "
+            "form IMPROVED; if lower, it declined. Compute the difference before writing. "
+            "Score = momentum: 50 is flat; add about 4 points per point of improvement, "
+            "subtract about 4 per point of decline, clamp 0-100. Empty history = 50 (baseline). "
+            "Call out personal records only if today's value really beats every history value "
+            "(reps, avgScore, bestJumpCm). Every finding must quote the exact numbers compared, "
+            "e.g. 'squat form 74 today vs 68 last time (+6, improving)'."
         ),
     },
 ]
@@ -97,24 +139,43 @@ async def ollama_report(agent: dict, session: Session, history: list[Session]) -
         "session": session.model_dump(),
         "recent_history": [h.model_dump() for h in history[-6:]],
     }
-    prompt = (
-        f"{agent['prompt']} Base every claim strictly on this JSON data — never invent stats.\n"
-        f"DATA: {json.dumps(payload)}\n"
+    system = (
+        f"{agent['prompt']}\n"
+        "Hard rules: use ONLY numbers that appear in DATA — never invent stats, reps, dates "
+        "or history. Re-check every comparison's direction (higher score = better) before "
+        "stating it. Tone: specific, encouraging, honest. "
         'Reply with ONLY a JSON object: {"score": <0-100 int>, '
-        '"findings": [<2-4 short specific strings>], "reasoning": "<one sentence>"}'
+        '"findings": [<2-4 short specific strings>], "reasoning": "<one sentence>"}. '
+        "Every findings item must be a plain sentence string — never a nested object."
     )
-    async with httpx.AsyncClient(timeout=30.0) as http:
+    # 4 agents queue on one local GPU; the last in line waits for the first three.
+    async with httpx.AsyncClient(timeout=180.0) as http:
         res = await http.post(
             f"{OLLAMA_URL}/api/chat",
             json={
                 "model": OLLAMA_MODEL,
-                "messages": [{"role": "user", "content": prompt}],
+                "messages": [
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": f"DATA: {json.dumps(payload)}"},
+                ],
                 "format": "json",
                 "stream": False,
+                # modest num_ctx: without it Ollama allocates the model's full
+                # 64k window and an 8B model swaps instead of generating
+                "options": {"temperature": 0.2, "num_ctx": 4096},
             },
         )
         res.raise_for_status()
-        return AgentReport.model_validate_json(res.json()["message"]["content"])
+        raw = json.loads(res.json()["message"]["content"])
+        # Small local models sometimes emit findings as objects — flatten to sentences.
+        findings = []
+        for item in raw.get("findings", []):
+            if isinstance(item, dict):
+                findings.append(" — ".join(str(v) for v in item.values() if v not in (None, "")))
+            elif item:
+                findings.append(str(item))
+        raw["findings"] = findings or ["No specific findings returned."]
+        return AgentReport.model_validate(raw)
 
 
 def rules_report(agent: dict, session: Session, history: list[Session]) -> AgentReport:
@@ -194,8 +255,13 @@ async def run_agent(agent: dict, session: Session, history: list[Session]) -> di
         report = await llm_report(agent, session, history)
         engine = "claude"
     elif _ollama:
-        report = await ollama_report(agent, session, history)
-        engine = f"ollama:{OLLAMA_MODEL}"
+        try:
+            report = await ollama_report(agent, session, history)
+            engine = f"ollama:{OLLAMA_MODEL}"
+        except Exception:
+            # One flaky LLM reply must never sink the whole report.
+            report = rules_report(agent, session, history)
+            engine = "rules-fallback"
     elif os.environ.get("FORMCOACH_ALLOW_RULES") == "1":
         # deterministic engine retained for CI test determinism only
         report = rules_report(agent, session, history)
