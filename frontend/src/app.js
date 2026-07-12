@@ -974,9 +974,12 @@ function addMsg(text, who) {
 
 // Same idea as tests/src/voice_assistant: speak complete sentences as they
 // arrive, while the text is also written into the chat.
+let coachTalking = false; // our own flag — the engine's .speaking can stick
+
 function speakCoachText(text) {
   if (!text || !("speechSynthesis" in window)) return Promise.resolve();
   speechSynthesis.cancel();
+  coachTalking = true;
   const sentences = String(text).match(/[^.!?\n]+[.!?\n]+|[^.!?\n]+$/g) || [text];
   const cleanSentences = sentences.map((s) => s.trim()).filter(Boolean);
   if (!cleanSentences.length) return Promise.resolve();
@@ -985,6 +988,7 @@ function speakCoachText(text) {
     const finish = () => {
       if (settled) return;
       settled = true;
+      coachTalking = false;
       clearInterval(watch);
       clearTimeout(cap);
       resolve();
@@ -1064,11 +1068,23 @@ async function askCoach(question, { speakAnswer = true } = {}) {
   // 2) local streaming AI with session stats + in-chat memory
   $("memoryVoiceStatus").textContent = "🧠 Memory backend offline — answering from this device.";
   let first = true;
+  if (speakAnswer) coachTalking = true;
   const reply = await coachReplyStream(q, mySessions(), (sentence) => {
     if (first) { pending.classList.remove("thinking"); pending.textContent = ""; first = false; }
     pending.textContent += (pending.textContent ? " " : "") + sentence;
     if (speakAnswer) speakQueued(sentence);
   });
+  if (speakAnswer) {
+    // release once the queued sentences drain — bounded, never stuck
+    let waited = 0;
+    const drain = setInterval(() => {
+      waited += 400;
+      if ((!speechSynthesis.speaking && !speechSynthesis.pending) || waited > 25000) {
+        coachTalking = false;
+        clearInterval(drain);
+      }
+    }, 400);
+  }
   if (first) {
     pending.classList.remove("thinking");
     pending.textContent = reply.text;
@@ -1116,7 +1132,7 @@ function listenOnce(target = "chat") {
     $("micToggle").textContent = "🎤 Voice control";
   }
   if (!voiceLoop.active || voiceLoop.listening) return;
-  if (speechSynthesis.speaking) { setTimeout(() => listenOnce(target), 300); return; }
+  if (coachTalking) { setTimeout(() => listenOnce(target), 300); return; }
   if (memoryRec) memoryRec.stop();
   voiceLoop.listening = true;
   setVoiceLoopUI(true, target, "Listening…");
@@ -1130,7 +1146,7 @@ function listenOnce(target = "chat") {
     // without headphones the mic picks up the coach's own voice — discard
     // ANYTHING heard while the coach is talking, before any other handling
     // (this once made the coach hear its own "say stop" and stop itself)
-    if (speechSynthesis.speaking) return;
+    if (coachTalking) { $("memoryVoiceStatus").textContent = "🎙 (ignored — I was talking)"; return; }
     if (!last.isFinal) {
       $("memoryVoiceStatus").textContent = `🎙 Heard: “${text.trim()}…”`;
       return;
@@ -1145,7 +1161,7 @@ function listenOnce(target = "chat") {
     await askCoach(text, { speakAnswer: true });
     const relisten = () => {
       if (!voiceLoop.active) return;
-      if (speechSynthesis.speaking) { setTimeout(relisten, 400); return; }
+      if (coachTalking) { setTimeout(relisten, 400); return; }
       listenOnce(target);
     };
     setTimeout(relisten, 250);
@@ -1161,7 +1177,8 @@ function listenOnce(target = "chat") {
       stopVoiceLoop("🎙 Voice input needs internet (Chrome's speech service). Typed chat works offline.");
       return;
     }
-    // no-speech / aborted — keep quietly listening
+    // no-speech / aborted — say so, keep listening
+    if (e.error === "no-speech") $("memoryVoiceStatus").textContent = "🎙 Didn't catch that — listening again…";
     if (voiceLoop.active) setTimeout(() => listenOnce(target), 700);
   };
   memoryRec.onend = () => {
