@@ -39,6 +39,10 @@ FormCoach AI watches you train and coaches you in real time:
 - **Scores every rep 0–100** against common form-risk patterns — squat depth, torso
   lean, body-line collapse, elbow drift — and shows a live form-score ring.
   (A coaching aid, not a medical diagnostic tool.)
+- **A flip-book of every session.** One click downloads a page-turning training
+  book — cover, each fault photo with the vision AI's written description, the
+  timestamped error notebook, the coach's verdict — generated as a single
+  self-contained file on the athlete's own device.
 - **Fault evidence, photographed.** The moment a fault fires, FormCoach captures
   that exact frame — skeleton overlay included — into a timestamped evidence gallery
   in your summary. Like a coach with a camera roll; kept in memory only, never uploaded.

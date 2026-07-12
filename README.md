@@ -30,6 +30,10 @@ Built solo in under 48 hours for **United Hacks V7** (Sports track).
   video bytes uploaded (always 0), plus a local-only mode that sends nothing at all
 - **📐 Live telestration** — broadcast-style joint-angle readouts (knee/elbow degrees)
   drawn on the athlete in real time
+- **📖 Session flip-book** — one downloadable book per session: cover, every fault
+  photo with its timestamp and the vision model's description, the red error
+  notebook, and the coach's verdict — a self-contained page-flip HTML, generated
+  entirely on-device
 - **📸 Fault evidence gallery** — the exact frame of every fault, skeleton overlay
   included, timestamped in your session summary ("0:42 — chest up, leaning forward").
   Kept in memory only: never uploaded, never stored
