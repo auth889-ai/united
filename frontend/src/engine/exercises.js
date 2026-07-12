@@ -96,7 +96,7 @@ class SquatAnalyzer {
         repDone = true;
         repScore = 100;
         this.lastRepMetrics = { depth: Math.round(this.minKnee), lean: Math.round(this.maxLean) };
-        if (this.minKnee > 105) { repScore -= 30; cues.push({ text: "Too shallow — aim to get thighs near parallel.", level: P.WARN }); }
+        if (this.minKnee > 105) { repScore -= 30; cues.push({ text: "Too shallow — aim to get thighs near parallel.", say: `Too shallow — your knee only bent to ${Math.round(this.minKnee)} degrees. Get below ninety-five.`, level: P.WARN }); }
         else if (this.minKnee > 95) { repScore -= 12; }
         if (this.maxLean > 50) repScore -= 25;
         else if (this.maxLean > 40) repScore -= 10;
@@ -140,8 +140,8 @@ class PushupAnalyzer {
         repDone = true;
         repScore = 100;
         this.lastRepMetrics = { depth: Math.round(this.minElbow), line: Math.round(this.worstLine) };
-        if (this.minElbow > 110) { repScore -= 40; cues.push({ text: "Half rep — bend those elbows past ninety degrees.", level: P.WARN }); }
-        else if (this.minElbow > 95) { repScore -= 25; cues.push({ text: "Go lower — chest toward the floor.", level: P.WARN }); }
+        if (this.minElbow > 110) { repScore -= 40; cues.push({ text: "Half rep — bend those elbows past ninety degrees.", say: `Half rep — your elbows stopped at ${Math.round(this.minElbow)} degrees. Bend past ninety.`, level: P.WARN }); }
+        else if (this.minElbow > 95) { repScore -= 25; cues.push({ text: "Go lower — chest toward the floor.", say: `Almost — ${Math.round(this.minElbow)} degrees at the elbow. A little lower to hit ninety.`, level: P.WARN }); }
         if (this.worstLine < 155) repScore -= 25;
         else if (this.worstLine < 165) repScore -= 10;
         if (repScore >= 90) cues.push({ text: "Clean push-up, nice line!", level: P.INFO });
@@ -180,7 +180,7 @@ class CurlAnalyzer {
         repDone = true;
         repScore = 100;
         this.lastRepMetrics = { extension: Math.round(this.minElbow), drift: Math.round(this.maxDrift) };
-        if (this.minElbow > 80) { repScore -= 30; cues.push({ text: "Curl higher — bring the weight all the way up.", level: P.WARN }); }
+        if (this.minElbow > 80) { repScore -= 30; cues.push({ text: "Curl higher — bring the weight all the way up.", say: `Curl higher — you stopped at ${Math.round(this.minElbow)} degrees. Squeeze past sixty.`, level: P.WARN }); }
         else if (this.minElbow > 60) { repScore -= 15; cues.push({ text: "Squeeze all the way up at the top.", level: P.INFO }); }
         if (this.maxDrift > 35) repScore -= 25;
         else if (this.maxDrift > 25) repScore -= 10;
@@ -325,7 +325,7 @@ class HighKneesAnalyzer {
           if (this.peakLift < 0.06) {
             this.shallowStreak++;
             if (this.shallowStreak >= 3) {
-              cues.push({ text: "Drive your knees higher — up to hip height!", level: P.WARN });
+              cues.push({ text: "Drive your knees higher — up to hip height!", say: `Knee drive is at ${Math.round(this.peakLift * 100)} percent of frame — get those knees to hip height!`, level: P.WARN });
               this.shallowStreak = 0;
             }
           } else this.shallowStreak = 0;
@@ -409,7 +409,7 @@ class PressAnalyzer {
         repDone = true;
         repScore = 100;
         this.lastRepMetrics = { lockout: Math.round(this.maxElbow), lean: Math.round(this.maxLean) };
-        if (this.maxElbow < 160) { repScore -= 30; cues.push({ text: "Press all the way up — full lockout overhead.", level: P.WARN }); }
+        if (this.maxElbow < 160) { repScore -= 30; cues.push({ text: "Press all the way up — full lockout overhead.", say: `Lockout stopped at ${Math.round(this.maxElbow)} degrees — push to one-sixty overhead.`, level: P.WARN }); }
         if (this.maxLean > 20) repScore -= 25;
         else if (this.maxLean > 12) repScore -= 10;
         if (repScore >= 90) cues.push({ text: "Strong press, solid lockout!", level: P.INFO });

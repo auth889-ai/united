@@ -341,15 +341,18 @@ function onFrame(lm) {
 
   if (r.cues.length) {
     const top = r.cues.sort((a, b) => b.level - a.level)[0];
-    setCue(top.text, top.level === PRIORITY.CRITICAL ? "bad" : top.level === PRIORITY.WARN ? "warn" : "good");
+    // `say` carries this rep's MEASURED numbers — every correction is
+    // specific to what actually happened, never a canned repeat
+    const spoken = top.say || vary(top.text);
+    setCue(top.say || top.text, top.level === PRIORITY.CRITICAL ? "bad" : top.level === PRIORITY.WARN ? "warn" : "good");
     if (top.level >= PRIORITY.WARN) {
-      speak(vary(top.text), { interrupt: top.level === PRIORITY.CRITICAL });
+      speak(spoken, { interrupt: top.level === PRIORITY.CRITICAL });
       // a held bad position counts as one fault, not one per frame
       const now = performance.now();
       if (top.text !== lastFault.text || now - lastFault.at > 3000) {
         state.faults[top.text] = (state.faults[top.text] || 0) + 1;
         lastFault = { text: top.text, at: now };
-        captureFaultShot(top.text);
+        captureFaultShot(top.say || top.text);
       }
     }
   }
