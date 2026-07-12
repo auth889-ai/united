@@ -1143,10 +1143,18 @@ function listenOnce(target = "chat") {
     };
     setTimeout(relisten, 250);
   };
-  memoryRec.onerror = () => {
-    $("memoryVoiceStatus").textContent = "Could not hear that. Type the question or try again.";
+  memoryRec.onerror = (e) => {
     voiceLoop.listening = false;
     memoryRec = null;
+    if (e.error === "not-allowed" || e.error === "service-not-allowed") {
+      stopVoiceLoop("🎙 Microphone blocked — click the address-bar icon → Microphone → Allow, then reload.");
+      return;
+    }
+    if (e.error === "network") {
+      stopVoiceLoop("🎙 Voice input needs internet (Chrome's speech service). Typed chat works offline.");
+      return;
+    }
+    // no-speech / aborted — keep quietly listening
     if (voiceLoop.active) setTimeout(() => listenOnce(target), 700);
   };
   memoryRec.onend = () => {
@@ -1162,11 +1170,31 @@ function listenOnce(target = "chat") {
   }
 }
 
+// Like a desktop voice assistant: explicitly open the input device FIRST.
+// This forces Chrome's mic permission prompt (the app previously only ever
+// asked for the camera), shows the mic indicator, and surfaces a denial as
+// a clear message instead of a recognizer that silently never hears.
+async function ensureMicPermission() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    stream.getTracks().forEach((t) => t.stop());
+    return true;
+  } catch (err) {
+    const msg = err.name === "NotAllowedError"
+      ? "Chrome has blocked the microphone for this page. Click the icon left of the address bar → Microphone → Allow, then reload."
+      : "No working microphone found — check your input device.";
+    $("memoryVoiceStatus").textContent = "🎙 " + msg;
+    speak(msg, { force: true });
+    return false;
+  }
+}
+
 async function toggleVoiceLoop(target = "chat") {
   if (voiceLoop.active && voiceLoop.target === target) {
     stopVoiceLoop("Voice chat stopped.");
     return;
   }
+  if (!(await ensureMicPermission())) return;
   voiceLoop.active = true;
   voiceLoop.target = target;
   setVoiceLoopUI(true, target, "Voice chat on. Listening after the beep.");
