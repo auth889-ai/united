@@ -1094,6 +1094,7 @@ function setVoiceLoopUI(active, target = "chat", label = "") {
 
 function stopVoiceLoop(message = "Voice chat stopped.") {
   voiceLoop.active = false;
+  stopMicMeter();
   voiceLoop.listening = false;
   memoryRec?.stop();
   memoryRec = null;
@@ -1119,9 +1120,14 @@ function listenOnce(target = "chat") {
   memoryRec = new MemorySR();
   memoryRec.lang = "en-US";
   memoryRec.continuous = false;
-  memoryRec.interimResults = false;
+  memoryRec.interimResults = true; // show what it's hearing, as it hears it
   memoryRec.onresult = async (e) => {
-    const text = e.results[e.results.length - 1][0].transcript;
+    const last = e.results[e.results.length - 1];
+    const text = last[0].transcript;
+    if (!last.isFinal) {
+      $("memoryVoiceStatus").textContent = `🎙 Heard: “${text.trim()}…”`;
+      return;
+    }
     voiceLoop.listening = false;
     memoryRec = null;
     if (isStopPhrase(text)) {
@@ -1170,15 +1176,15 @@ function listenOnce(target = "chat") {
   }
 }
 
-// Like a desktop voice assistant: explicitly open the input device FIRST.
-// This forces Chrome's mic permission prompt (the app previously only ever
-// asked for the camera), shows the mic indicator, and surfaces a denial as
-// a clear message instead of a recognizer that silently never hears.
-async function ensureMicPermission() {
+// Like a desktop voice assistant: open the input device FIRST and keep a
+// live level meter on it. If the meter stays flat while you talk, the OS is
+// using the wrong microphone — the classic failure the reference assistant
+// solves with its list-audio-devices step.
+const micMeter = { stream: null, ctx: null, raf: null, silentSince: 0, warned: false };
+
+async function startMicMeter() {
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    stream.getTracks().forEach((t) => t.stop());
-    return true;
+    micMeter.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   } catch (err) {
     const msg = err.name === "NotAllowedError"
       ? "Chrome has blocked the microphone for this page. Click the icon left of the address bar → Microphone → Allow, then reload."
@@ -1187,6 +1193,40 @@ async function ensureMicPermission() {
     speak(msg, { force: true });
     return false;
   }
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const analyser = ctx.createAnalyser();
+  analyser.fftSize = 512;
+  ctx.createMediaStreamSource(micMeter.stream).connect(analyser);
+  const buf = new Uint8Array(analyser.frequencyBinCount);
+  micMeter.ctx = ctx;
+  micMeter.silentSince = performance.now();
+  micMeter.warned = false;
+  const BARS = "▁▂▃▄▅▆▇█";
+  const tick = () => {
+    if (!voiceLoop.active) return;
+    analyser.getByteTimeDomainData(buf);
+    let peak = 0;
+    for (const v of buf) peak = Math.max(peak, Math.abs(v - 128));
+    $("micLevel").textContent = "🎚" + BARS[Math.max(0, Math.min(7, Math.round(peak / 14)))];
+    if (peak > 10) { micMeter.silentSince = performance.now(); micMeter.warned = false; }
+    else if (!micMeter.warned && voiceLoop.listening && performance.now() - micMeter.silentSince > 4000) {
+      micMeter.warned = true;
+      $("memoryVoiceStatus").textContent =
+        "🎙 The mic is open but hears NOTHING — macOS may be using the wrong input. System Settings → Sound → Input, pick your mic, watch this meter move.";
+    }
+    micMeter.raf = requestAnimationFrame(tick);
+  };
+  tick();
+  return true;
+}
+
+function stopMicMeter() {
+  cancelAnimationFrame(micMeter.raf);
+  micMeter.stream?.getTracks().forEach((t) => t.stop());
+  micMeter.ctx?.close().catch(() => {});
+  micMeter.stream = null;
+  micMeter.ctx = null;
+  $("micLevel").textContent = "";
 }
 
 async function toggleVoiceLoop(target = "chat") {
@@ -1194,9 +1234,9 @@ async function toggleVoiceLoop(target = "chat") {
     stopVoiceLoop("Voice chat stopped.");
     return;
   }
-  if (!(await ensureMicPermission())) return;
-  voiceLoop.active = true;
+  voiceLoop.active = true; // before the meter starts — its tick checks this
   voiceLoop.target = target;
+  if (!(await startMicMeter())) { voiceLoop.active = false; return; }
   setVoiceLoopUI(true, target, "Voice chat on. Listening after the beep.");
   await speakCoachText("Voice chat on. Ask me anything. Say stop when you are done.");
   listenOnce(target);

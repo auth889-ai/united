@@ -531,3 +531,5 @@ button { font: inherit; cursor: pointer; }
 .vr-line { margin: 0.3rem 0; white-space: normal; }
 .vr-line b { color: #5e5ce6; margin-right: 0.35rem; }
 .vision-card.vr-fault .vr-line b { color: #c0392b; }
+
+.mic-level { font-family: ui-monospace, monospace; color: #5e5ce6; font-size: 0.95rem; }
