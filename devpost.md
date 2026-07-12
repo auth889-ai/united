@@ -88,9 +88,11 @@ FormCoach AI watches you train and coaches you in real time:
   a FastAPI backend fans your joint-angle stats out to four specialized agents —
   🦵 Biomechanics, 🚑 Injury Risk, 📋 Programming, 📈 Progress — each returning a
   score, findings, and its **visible reasoning**. Transparent AI, not a black box.
-- **Answers questions as a coach.** A built-in rules coach knows your session
-  stats; optionally plug in any OpenAI-compatible LLM (e.g. Featherless AI) for
-  open-ended coaching.
+- **Answers questions as a coach — and REMEMBERS you.** Ask anything by voice and
+  a local LLM (Llama 3.1 through Ollama) answers out loud. A self-hosted
+  **Memobase** memory server (Docker) turns every session and conversation into a
+  long-term athlete profile — your recurring faults, records, injuries and goals —
+  so the coach talks to you like it has known you for months. All on your machine.
 
 And the privacy story: **your camera feed never leaves your browser.** Pose
 estimation runs on-device with WebAssembly + GPU; only anonymized joint-angle
@@ -98,33 +100,40 @@ numbers reach the backend. Privacy isn't a policy, it's the architecture.
 
 ## 🛠 How I built it
 
-**Architecture:**
+**Architecture** *(upload `architecture.png` from the repo into the Devpost
+gallery / drop it into the story right here — the full diagram also renders live
+in the GitHub README)*:
 
-```
-Browser → MediaPipe Pose (on-device WASM+GPU) → Biomechanics engine (rep FSMs, form scoring)
-                                                        ↓ (stats only — never video)
-                              FastAPI → 4 parallel AI agents (Claude / rules fallback)
-                                                        ↓
-                                     SQLite → Athlete Readiness Report → Dashboard
-```
+> **In the browser (video never leaves):** Camera → MediaPipe Pose (33 landmarks
+> @ 30 fps, WASM + GPU) → my biomechanics engine (5 drill state machines: rep
+> count + form score 0–100) → voice coach, Movement Twin, session flip-book, and
+> an AES-256 encrypted history vault.
+> **Only JSON numbers — never video — go to:** a local FastAPI backend, where 4
+> AI agents (Biomechanics, Injury Risk, Programming, Progress) analyze every
+> session in parallel on **Llama 3.1 8B through Ollama** — free, no API key.
+> **And it remembers:** a self-hosted **Memobase server (Docker: API + Postgres
+> + Redis)** distills every session and chat into each athlete's long-term
+> profile, which flows back into the coach's answers.
 
 - **MediaPipe Pose Landmarker** (full model, GPU delegate) for 33-landmark
   tracking at ~30fps in the browser.
 - **A biomechanics engine I wrote from scratch** (`frontend/src/engine/exercises.js`): vector math
   for joint angles, per-exercise finite-state machines for rep detection, and a
   fault-deduction scoring model.
-- **Multi-agent backend** (`backend/app/`): FastAPI + `asyncio.gather` runs four
-  specialized Claude agents concurrently, each constrained to Pydantic-validated
-  structured output (score / findings / reasoning), synthesized into an overall
-  readiness score and persisted in SQLite. A deterministic rules engine mirrors
-  every agent so the system degrades gracefully with no API key.
+- **Multi-agent backend** (`backend/app/`): FastAPI + `asyncio.gather` runs the
+  four agents concurrently, each constrained to Pydantic-validated structured
+  output (score / findings / reasoning), synthesized into an overall readiness
+  score and persisted in SQLite. Claude-compatible if a key is set; a
+  deterministic rules engine keeps CI reproducible.
+- **Two-layer athlete memory**: exact stats in SQLite + a **Memobase** long-term
+  profile (recurring faults, corrected faults, PRs, injuries, goals, coaching
+  preferences) extracted by a local model — the voice coach injects both layers
+  into every answer.
 - **Web Speech API both directions** — synthesis for voice coaching (priority
   levels + cooldown so it talks like a human, not an alarm) and recognition for
-  hands-free control with a command grammar.
+  hands-free control with a command grammar, barge-in included.
 - **Vanilla JS + SVG** for the UI and an accessible progress chart (hover
   tooltips, direct labels, table view) — no framework, no build step.
-- Optional **LLM coach chat** through any OpenAI-compatible endpoint, with a
-  rules-based fallback so the demo always works offline.
 
 ## 🤔 How it's different (yes, other pose trainers exist — I checked)
 
