@@ -996,44 +996,18 @@ function speakCoachText(text) {
   });
 }
 
-$("chatForm").addEventListener("submit", async (e) => {
+$("chatForm").addEventListener("submit", (e) => {
   e.preventDefault();
   const q = $("chatInput").value.trim();
   if (!q) return;
   $("chatInput").value = "";
-  addMsg(q, "user");
-  const pending = addMsg("thinking…", "coach");
-  pending.classList.add("thinking");
-  let first = true;
-  if ("speechSynthesis" in window) speechSynthesis.cancel();
-  const reply = await coachReplyStream(q, mySessions(), (sentence) => {
-    if (first) { pending.classList.remove("thinking"); pending.textContent = ""; first = false; }
-    pending.textContent += (pending.textContent ? " " : "") + sentence;
-    speakQueued(sentence);
-  });
-  if (first) {
-    pending.classList.remove("thinking");
-    pending.textContent = reply.text;
-    await speakCoachText(reply.text);
-  }
-  const tag = document.createElement("span");
-  tag.className = "msg-engine";
-  tag.textContent = reply.engine;
-  pending.appendChild(tag);
+  askCoach(q);
 });
 
 /* ================= local voice memory coach ================= */
 
 let memoryTurns = [];
 
-function addMemoryMsg(text, who) {
-  const div = document.createElement("div");
-  div.className = `msg msg-${who}`;
-  div.textContent = text;
-  $("memoryVoiceLog").appendChild(div);
-  $("memoryVoiceLog").scrollTop = $("memoryVoiceLog").scrollHeight;
-  return div;
-}
 
 async function syncMemoryCoach() {
   const sessions = mySessions();
@@ -1043,17 +1017,22 @@ async function syncMemoryCoach() {
   return r;
 }
 
-async function askRememberingCoach(question, { speakAnswer = true, target = "memory" } = {}) {
+async function askCoach(question, { speakAnswer = true } = {}) {
   const q = question.trim();
   if (!q) return;
-  const logToMain = target === "chat";
-  (logToMain ? addMsg : addMemoryMsg)(q, "user");
-  $("memoryAskInput").value = "";
-  if (logToMain) $("chatInput").value = "";
-  $("memoryVoiceStatus").textContent = "Reading athlete memory…";
-  const pending = (logToMain ? addMsg : addMemoryMsg)("thinking…", "coach");
+  addMsg(q, "user");
+  const pending = addMsg("thinking…", "coach");
   pending.classList.add("thinking");
+  if ("speechSynthesis" in window) speechSynthesis.cancel();
+  const tagIt = (engine) => {
+    const tag = document.createElement("span");
+    tag.className = "msg-engine";
+    tag.textContent = engine;
+    pending.appendChild(tag);
+  };
+  // 1) memory coach backend — knows the athlete's whole history
   try {
+    $("memoryVoiceStatus").textContent = "🧠 Reading athlete memory…";
     const reply = await askMemoryCoach({
       athlete: athleteName() || "Solo athlete",
       question: q,
@@ -1062,26 +1041,28 @@ async function askRememberingCoach(question, { speakAnswer = true, target = "mem
     });
     pending.classList.remove("thinking");
     pending.textContent = reply.text;
-    const tag = document.createElement("span");
-    tag.className = "msg-engine";
-    tag.textContent = reply.engine;
-    pending.appendChild(tag);
+    tagIt(reply.engine);
     memoryTurns.push({ role: "user", content: q }, { role: "assistant", content: reply.text });
     if (memoryTurns.length > 16) memoryTurns = memoryTurns.slice(-16);
-    $("memoryVoiceStatus").textContent = "Answer based on remembered sessions.";
+    $("memoryVoiceStatus").textContent = "🧠 Answered from remembered sessions.";
     if (speakAnswer) await speakCoachText(reply.text);
-  } catch {
+    return;
+  } catch { /* backend offline — the local streaming coach takes over */ }
+  // 2) local streaming AI with session stats + in-chat memory
+  $("memoryVoiceStatus").textContent = "🧠 Memory backend offline — answering from this device.";
+  let first = true;
+  const reply = await coachReplyStream(q, mySessions(), (sentence) => {
+    if (first) { pending.classList.remove("thinking"); pending.textContent = ""; first = false; }
+    pending.textContent += (pending.textContent ? " " : "") + sentence;
+    if (speakAnswer) speakQueued(sentence);
+  });
+  if (first) {
     pending.classList.remove("thinking");
-    pending.textContent = "Memory coach backend offline. Start it with: cd backend && uvicorn app.main:app --port 8001";
-    $("memoryVoiceStatus").textContent = "Backend offline.";
-    if (speakAnswer) await speakCoachText("Memory coach backend is offline.");
+    pending.textContent = reply.text;
+    if (speakAnswer) await speakCoachText(reply.text);
   }
+  tagIt(reply.engine);
 }
-
-$("memoryAskForm").addEventListener("submit", (e) => {
-  e.preventDefault();
-  askRememberingCoach($("memoryAskInput").value, { speakAnswer: true, target: "memory" });
-});
 
 const MemorySR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let memoryRec = null;
@@ -1093,11 +1074,8 @@ function isStopPhrase(text) {
 
 function setVoiceLoopUI(active, target = "chat", label = "") {
   const main = $("btnVoiceChat");
-  const memory = $("memoryVoiceToggle");
-  main.setAttribute("aria-pressed", active && target === "chat");
-  memory.setAttribute("aria-pressed", active && target === "memory");
-  main.textContent = active && target === "chat" ? "🎙 Stop" : "🎙 Ask";
-  memory.textContent = active && target === "memory" ? "🎙 Stop" : "🎙 Talk";
+  main.setAttribute("aria-pressed", active);
+  main.textContent = active ? "🎙 Stop" : "🎙 Ask";
   if (label) $("memoryVoiceStatus").textContent = label;
 }
 
@@ -1138,7 +1116,7 @@ function listenOnce(target = "chat") {
       await speakCoachText("Voice chat stopped.");
       return;
     }
-    await askRememberingCoach(text, { speakAnswer: true, target });
+    await askCoach(text, { speakAnswer: true });
     if (voiceLoop.active) {
       setTimeout(() => listenOnce(target), 250);
     }
@@ -1176,11 +1154,7 @@ async function toggleVoiceLoop(target = "chat") {
 
 $("btnVoiceChat").onclick = () => toggleVoiceLoop("chat");
 
-$("memoryVoiceToggle").onclick = () => {
-  const on = $("memoryVoiceToggle").getAttribute("aria-pressed") !== "true";
-  if (on) toggleVoiceLoop("memory");
-  else stopVoiceLoop("Voice chat stopped.");
-};
+
 
 /* ================= settings modal ================= */
 
