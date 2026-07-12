@@ -1198,11 +1198,15 @@ function listenOnce(target = "chat") {
 // live level meter on it. If the meter stays flat while you talk, the OS is
 // using the wrong microphone — the classic failure the reference assistant
 // solves with its list-audio-devices step.
-const micMeter = { stream: null, ctx: null, raf: null, silentSince: 0, warned: false };
-
-async function startMicMeter() {
+// ONE audio pipeline at a time — the reference assistant's rule. A meter
+// stream held open while SpeechRecognition runs can starve the recognizer
+// of the mic entirely (observed: recognition produced zero results while
+// the meter stream was live). So the meter is a short PRE-FLIGHT check
+// that fully releases the microphone before listening starts.
+async function preflightMic() {
+  let stream;
   try {
-    micMeter.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   } catch (err) {
     const msg = err.name === "NotAllowedError"
       ? "Chrome has blocked the microphone for this page. Click the icon left of the address bar → Microphone → Allow, then reload."
@@ -1211,41 +1215,30 @@ async function startMicMeter() {
     speak(msg, { force: true });
     return false;
   }
-  const ctx = new (window.AudioContext || window.webkitAudioContext)();
-  const analyser = ctx.createAnalyser();
-  analyser.fftSize = 512;
-  ctx.createMediaStreamSource(micMeter.stream).connect(analyser);
-  const buf = new Uint8Array(analyser.frequencyBinCount);
-  micMeter.ctx = ctx;
-  micMeter.silentSince = performance.now();
-  micMeter.warned = false;
-  const BARS = "▁▂▃▄▅▆▇█";
-  const tick = () => {
-    if (!voiceLoop.active) return;
-    analyser.getByteTimeDomainData(buf);
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 512;
+    ctx.createMediaStreamSource(stream).connect(analyser);
+    const buf = new Uint8Array(analyser.frequencyBinCount);
+    const BARS = "▁▂▃▄▅▆▇█";
     let peak = 0;
-    for (const v of buf) peak = Math.max(peak, Math.abs(v - 128));
-    $("micLevel").textContent = "🎚" + BARS[Math.max(0, Math.min(7, Math.round(peak / 14)))];
-    if (peak > 10) { micMeter.silentSince = performance.now(); micMeter.warned = false; }
-    else if (!micMeter.warned && voiceLoop.listening && performance.now() - micMeter.silentSince > 4000) {
-      micMeter.warned = true;
-      $("memoryVoiceStatus").textContent =
-        "🎙 The mic is open but hears NOTHING — macOS may be using the wrong input. System Settings → Sound → Input, pick your mic, watch this meter move.";
+    const t0 = performance.now();
+    while (performance.now() - t0 < 1200) {
+      analyser.getByteTimeDomainData(buf);
+      for (const v of buf) peak = Math.max(peak, Math.abs(v - 128));
+      $("micLevel").textContent = "🎚" + BARS[Math.max(0, Math.min(7, Math.round(peak / 14)))];
+      await new Promise((r) => setTimeout(r, 100));
     }
-    micMeter.raf = requestAnimationFrame(tick);
-  };
-  tick();
+    await ctx.close().catch(() => {});
+    $("micLevel").textContent = peak > 6 ? "🎚✓ mic OK" : "🎚 quiet mic";
+  } finally {
+    stream.getTracks().forEach((t) => t.stop()); // release BEFORE listening
+  }
   return true;
 }
 
-function stopMicMeter() {
-  cancelAnimationFrame(micMeter.raf);
-  micMeter.stream?.getTracks().forEach((t) => t.stop());
-  micMeter.ctx?.close().catch(() => {});
-  micMeter.stream = null;
-  micMeter.ctx = null;
-  $("micLevel").textContent = "";
-}
+function stopMicMeter() { $("micLevel").textContent = ""; }
 
 async function toggleVoiceLoop(target = "chat") {
   if (voiceLoop.active && voiceLoop.target === target) {
@@ -1254,7 +1247,7 @@ async function toggleVoiceLoop(target = "chat") {
   }
   voiceLoop.active = true; // before the meter starts — its tick checks this
   voiceLoop.target = target;
-  if (!(await startMicMeter())) { voiceLoop.active = false; return; }
+  if (!(await preflightMic())) { voiceLoop.active = false; return; }
   setVoiceLoopUI(true, target, "Voice chat on. Listening after the beep.");
   await speakCoachText("Voice chat on. Ask me anything.");
   $("memoryVoiceStatus").textContent = "🎙 Listening — say \"goodbye\" or press the button to end.";
