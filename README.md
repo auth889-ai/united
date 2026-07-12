@@ -14,6 +14,15 @@ Built solo in under 48 hours for **United Hacks V7** (Sports track).
 
 **▶ Demo video:** _coming — link will be added at submission_ · **Live demo:** https://auth889-ai.github.io/united/
 
+## 🧭 Four promises
+
+| | Promise | How it's kept |
+|---|---|---|
+| 🔒 | **Private** | All pose inference runs on-device (WASM + GPU). **Zero bytes of video ever leave your machine** — an on-screen counter proves it live. Your history is AES-256-GCM encrypted with a key derived from *your* password; not even someone reading localStorage can see it. |
+| 💸 | **Fully free** | No API key, no subscription, no account server. The physics coach, voice cues, and reports all work out of the box; the optional AI brain is a free local LLM (Ollama). |
+| 📴 | **Offline** | Installable PWA with a service worker — after the first load, the coach works with no internet at all. The vision model, LLM chat, and flip-book are all generated on your machine. |
+| 🎙️ | **Voice conversation** | Not just spoken cues — a real two-way chat. Talk to the coach hands-free mid-workout ("what should I fix first?"), it answers out loud, and 🎧 barge-in lets you interrupt it mid-sentence. Fully eyes-free operation for blind and low-vision athletes. |
+
 ## ✨ Features
 
 - **🏁 Guided workout mode** — pick sets × reps and the coach runs the whole workout
