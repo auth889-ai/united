@@ -415,7 +415,7 @@ export async function visionReport(shots, timeline, onSentence) {
   for (const s of shots) {
     const stamp = `${Math.floor(s.at / 60)}:${String(s.at % 60).padStart(2, "0")}`;
     const head = `\n\n⏱ ${stamp} — ${s.text}\n`;
-    full += head; onSentence(head);
+    full += head; onSentence(head, { type: "head", stamp, fault: s.text });
     let note = "";
     // stage 1 — eyes
     let observed = "";
@@ -445,13 +445,16 @@ export async function visionReport(shots, timeline, onSentence) {
         body: JSON.stringify({
           model: "llama3.2",
           stream: true,
-          options: { num_predict: 130 },
+          options: { num_predict: 220 },
           messages: [
             { role: "system", content:
               "You are a precise strength coach writing one entry of a session review. " +
-              "Write 2-3 plain sentences, second person, no headings, no preamble: " +
-              "what is happening in the athlete's body, why it matters (injury or performance), " +
-              "and exactly how to fix it on the next rep. Never invent measurements." },
+              "Write EXACTLY four lines in second person, no preamble, each starting with its label:\n" +
+              "Problem: <what is happening in the athlete's body, specific joints and positions>\n" +
+              "Why it matters: <the injury risk or performance cost, concretely>\n" +
+              "Fix: <the exact cue to apply on the very next rep>\n" +
+              "Drill: <one practice exercise or setup change that builds the correction>\n" +
+              "Be detailed but plain-spoken. Never invent measurements." },
             { role: "user", content:
               `Moment: ${stamp} into the session. ` +
               (s.text === "form check"
@@ -466,16 +469,13 @@ export async function visionReport(shots, timeline, onSentence) {
         await readStreamingText(writeRes, (chunk) => {
           note += chunk;
           full += chunk;
-          onSentence(chunk);
+          onSentence(chunk, { type: "note" });
         });
       }
     } catch { /* skip this shot, keep walking the timeline */ }
-    entries.push({
-      at: s.at,
-      stamp,
-      fault: s.text,
-      note: note.trim() || "The local vision model could not describe this frame. Use the measured fault text and skeleton overlay for this page.",
-    });
+    const finalNote = note.trim() || "The local vision model could not describe this frame. Use the measured fault text and skeleton overlay for this page.";
+    entries.push({ at: s.at, stamp, fault: s.text, note: finalNote });
+    onSentence("", { type: "done", note: finalNote });
   }
   return { text: full.trim(), model, entries };
 }
