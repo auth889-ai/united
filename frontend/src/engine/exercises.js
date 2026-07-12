@@ -111,12 +111,26 @@ class SquatAnalyzer {
 
 class PushupAnalyzer {
   constructor() { this.reset(); }
-  reset() { this.state = "up"; this.minElbow = 180; this.worstLine = 180; this.downFrames = 0; }
+  reset() { this.state = "up"; this.minElbow = 180; this.worstLine = 180; this.downFrames = 0; this.readyFrames = 0; }
   update(lm) {
     const s = bestSide(lm);
     if (vis(lm, s.shoulder, s.elbow, s.wrist, s.hip) < 0.5) {
       return { phase: "—", repDone: false, repScore: null, cues: [{ text: "Turn side-on to the camera so I can see your arm and body line.", level: P.INFO }] };
     }
+    // Facing the camera makes 2D depth/body-line angles meaningless — a
+    // head-on push-up would score near-perfect no matter how bad it is.
+    // Refuse to judge until the athlete is side-on.
+    if (vis(lm, LM.L_SHOULDER, LM.R_SHOULDER) > 0.6) {
+      const spread = Math.abs(lm[LM.L_SHOULDER].x - lm[LM.R_SHOULDER].x);
+      const torso = Math.hypot(lm[s.shoulder].x - lm[s.hip].x, lm[s.shoulder].y - lm[s.hip].y);
+      if (torso > 0.05 && spread > torso * 0.6) {
+        this.readyFrames = 0;
+        return { phase: "—", repDone: false, repScore: null, cues: [{ text: "You're facing the camera — turn side-on so I can judge depth and body line.", level: P.WARN }] };
+      }
+    }
+    // Warm-up: getting into position looks like sagging hips — give the
+    // athlete a second to settle before judging posture.
+    this.readyFrames++;
     const elbow = angle(lm[s.shoulder], lm[s.elbow], lm[s.wrist]);
     // Body line needs a visible ankle — feet out of frame would produce
     // garbage angles and false "hips sagging" alarms.
@@ -125,7 +139,7 @@ class PushupAnalyzer {
     const cues = [];
     let repDone = false, repScore = null;
 
-    if (bodyLine < 155) cues.push({ text: "Hips sagging — squeeze your glutes, straight body line.", level: P.CRITICAL });
+    if (bodyLine < 155 && this.readyFrames > 30) cues.push({ text: "Hips sagging — squeeze your glutes, straight body line.", say: `Hips sagging — your body line is ${Math.round(bodyLine)} degrees. Squeeze your glutes, get to one-seventy.`, level: P.CRITICAL });
 
     // Enter "down" at 115° so shallow push-ups still register (and get scored down).
     if (this.state === "up" && elbow < 115) { this.state = "down"; this.downFrames = 0; }

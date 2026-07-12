@@ -364,7 +364,8 @@ export async function visionReport(shots, timeline, onSentence) {
   if (!model) return { error: "no-vision-model" };
   // Small vision models reason best about ONE image at a time — walk the
   // session chronologically, one timestamped snapshot per request.
-  const picks = shots.slice(0, 8);
+  // EVERY captured image is reviewed; nothing is skipped.
+  const picks = shots;
   let full = "";
   for (const s of picks) {
     const stamp = `${Math.floor(s.at / 60)}:${String(s.at % 60).padStart(2, "0")}`;

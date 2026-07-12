@@ -532,6 +532,7 @@ function startSession() {
 function finishSession() {
   endGuided();
   state.running = false;
+  setCue("Session complete — your summary is below.", "good");
   $("btnSession").textContent = "Start session";
   const avg = state.scores.length
     ? Math.round(state.scores.reduce((a, b) => a + b, 0) / state.scores.length) : 0;
@@ -636,6 +637,12 @@ $("btnVision").onclick = async () => {
     }
   );
   if (result.error) box.textContent = "Visual analysis unavailable: " + result.error;
+  else if (result.text && lastSession) {
+    // the vision note becomes part of this session's permanent record
+    lastSession.visionNote = result.text;
+    saveVault(sessionsCache).catch(() => {});
+    refreshProgress();
+  }
 };
 
 const tstamp = (sec) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`;
@@ -786,10 +793,10 @@ function refreshProgress() {
   renderChart($("chart"), sessions);
   renderTable($("chartTable"), sessions);
   // per-session error notebooks — every session's mistakes, kept separately
-  const withLogs = sessions.filter((s) => s.errorLog?.length).slice().reverse();
+  const withLogs = sessions.filter((s) => s.errorLog?.length || s.visionNote).slice().reverse();
   $("notebooks").innerHTML = withLogs.length
     ? `<h3 class="notebooks-title">📓 Session notebooks</h3>` + withLogs.map((s) =>
-        `<details class="notebook-session"><summary>${s.shortDate} · ${s.exercise} — ${s.errorLog.length} fault${s.errorLog.length > 1 ? "s" : ""} noted</summary>${notebookHTML(s.errorLog)}</details>`
+        `<details class="notebook-session"><summary>${s.shortDate} · ${s.exercise} — ${s.errorLog.length} fault${s.errorLog.length > 1 ? "s" : ""} noted${s.visionNote ? " · 🔍 visual review" : ""}</summary>${notebookHTML(s.errorLog)}${s.visionNote ? `<p class="coach-note" style="white-space:pre-line">🔍 ${s.visionNote}</p>` : ""}</details>`
       ).join("")
     : "";
 }
