@@ -1,5 +1,5 @@
 import { EXERCISES, PRIORITY, LM, angle } from "./engine/exercises.js";
-import { speak, speakRep, speakQueued, setVoice, summarize, coachReply, coachReplyStream, coachReview, liveCoachLine, visionReport, findVisionModel, liveVisionLine, getLLMConfig, setLLMConfig } from "./services/coach.js";
+import { speak, speakRep, speakQueued, setVoice, summarize, coachReply, coachReplyStream, coachReview, liveCoachLine, visionReport, findVisionModel, liveVisionLine, resetChat, getLLMConfig, setLLMConfig } from "./services/coach.js";
 import { renderChart, renderTable } from "./ui/chart.js";
 import { voiceControlSupported, startVoiceControl, stopVoiceControl, setBargeIn } from "./services/voice.js";
 import { requestReport } from "./ui/report.js";
@@ -927,6 +927,12 @@ function handleIntent(intent, text) {
         tag.textContent = reply.engine;
         pending.appendChild(tag);
       });
+      break;
+    }
+    case "reset-chat": {
+      resetChat();
+      addMsg("🔄 New conversation started.", "coach");
+      speak("Fresh start. What do you want to talk about?", { force: true });
       break;
     }
     case "stt-offline": {

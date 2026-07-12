@@ -189,6 +189,11 @@ export function speakQueued(text) {
 
 // Streaming reply: sentences are delivered (and can be spoken) AS the model
 // generates them — first words in ~1s instead of waiting for the full answer.
+// Conversation memory: the coach remembers this session's chat, so
+// follow-ups ("what about my knees?") work like a real conversation.
+let chatTurns = [];
+export function resetChat() { chatTurns = []; }
+
 export async function coachReplyStream(question, history, onSentence) {
   const eng = await resolveEngine();
   if (!eng) return { text: OFFLINE_MSG, engine: "offline" };
@@ -210,6 +215,7 @@ export async function coachReplyStream(question, history, onSentence) {
             "You are FormCoach, a concise, encouraging sports form coach inside a webcam training app. " +
             "The user's recent session stats (JSON): " + JSON.stringify(stats) +
             ". Answer in under 80 words. Never invent stats not in the JSON." },
+          ...chatTurns.slice(-8),
           { role: "user", content: question },
         ],
       }),
@@ -246,6 +252,10 @@ export async function coachReplyStream(question, history, onSentence) {
       }
     }
     flush(true);
+    if (full.trim()) {
+      chatTurns.push({ role: "user", content: question }, { role: "assistant", content: full.trim() });
+      if (chatTurns.length > 16) chatTurns = chatTurns.slice(-16);
+    }
     return { text: full.trim() || OFFLINE_MSG, engine: full ? eng.label + " · streamed" : "offline" };
   } catch {
     return { text: OFFLINE_MSG, engine: "offline" };

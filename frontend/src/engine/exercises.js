@@ -140,7 +140,8 @@ class PushupAnalyzer {
         repDone = true;
         repScore = 100;
         this.lastRepMetrics = { depth: Math.round(this.minElbow), line: Math.round(this.worstLine) };
-        if (this.minElbow > 100) { repScore -= 25; cues.push({ text: "Go lower — chest toward the floor.", level: P.WARN }); }
+        if (this.minElbow > 110) { repScore -= 40; cues.push({ text: "Half rep — bend those elbows past ninety degrees.", level: P.WARN }); }
+        else if (this.minElbow > 95) { repScore -= 25; cues.push({ text: "Go lower — chest toward the floor.", level: P.WARN }); }
         if (this.worstLine < 155) repScore -= 25;
         else if (this.worstLine < 165) repScore -= 10;
         if (repScore >= 90) cues.push({ text: "Clean push-up, nice line!", level: P.INFO });
