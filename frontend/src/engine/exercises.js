@@ -378,6 +378,48 @@ class PlankAnalyzer {
   }
 }
 
+// Overhead (shoulder) press: rack position -> full lockout overhead.
+// Registers the press early (elbow > 120°) so partial presses are counted
+// and coached; full credit requires lockout past 160°. The classic fault is
+// leaning back (lumbar arch) to cheat the weight up — a direct injury risk.
+class PressAnalyzer {
+  constructor() { this.reset(); }
+  reset() { this.state = "rack"; this.maxElbow = 0; this.maxLean = 0; this.pressFrames = 0; this.lastRepMetrics = null; }
+  update(lm) {
+    const s = bestSide(lm);
+    if (vis(lm, s.shoulder, s.elbow, s.wrist) < 0.5) {
+      return { phase: "—", repDone: false, repScore: null, cues: [{ text: "Step back so I can see your arms and torso.", level: P.INFO }] };
+    }
+    const elbow = angle(lm[s.shoulder], lm[s.elbow], lm[s.wrist]);
+    const torsoLen = lm[s.hip].y - lm[s.shoulder].y;
+    const lean = torsoLen > 0.12 ? leanFromVertical(lm[s.shoulder], lm[s.hip]) : 0;
+    const cues = [];
+    let repDone = false, repScore = null;
+
+    if (this.state === "rack" && elbow > 120) { this.state = "press"; this.pressFrames = 0; }
+    if (this.state === "press") {
+      this.pressFrames++;
+      this.maxElbow = Math.max(this.maxElbow, elbow);
+      this.maxLean = Math.max(this.maxLean, lean);
+      if (lean > 20) cues.push({ text: "You're leaning back — ribs down, squeeze your glutes.", level: P.CRITICAL });
+      if (elbow < 100 && this.pressFrames < 4) { // noise blip, not a rep
+        this.state = "rack"; this.maxElbow = 0; this.maxLean = 0;
+      } else if (elbow < 100) { // bar back at the rack — rep complete
+        this.state = "rack";
+        repDone = true;
+        repScore = 100;
+        this.lastRepMetrics = { lockout: Math.round(this.maxElbow), lean: Math.round(this.maxLean) };
+        if (this.maxElbow < 160) { repScore -= 30; cues.push({ text: "Press all the way up — full lockout overhead.", level: P.WARN }); }
+        if (this.maxLean > 20) repScore -= 25;
+        else if (this.maxLean > 12) repScore -= 10;
+        if (repScore >= 90) cues.push({ text: "Strong press, solid lockout!", level: P.INFO });
+        this.maxElbow = 0; this.maxLean = 0;
+      }
+    }
+    return { phase: this.state === "press" ? "Press" : "Rack", repDone, repScore, cues, repMetrics: repDone ? this.lastRepMetrics : null };
+  }
+}
+
 export const EXERCISES = {
   squat:  { name: "Squat",         repNoun: "Reps",  make: () => new SquatAnalyzer() },
   pushup: { name: "Push-up",       repNoun: "Reps",  make: () => new PushupAnalyzer() },
@@ -386,6 +428,7 @@ export const EXERCISES = {
   jacks:  { name: "Jumping jacks", repNoun: "Reps",  make: () => new JumpingJackAnalyzer() },
   knees:  { name: "High knees",    repNoun: "Steps", make: () => new HighKneesAnalyzer() },
   plank:  { name: "Plank",         repNoun: "Seconds", make: () => new PlankAnalyzer() },
+  press:  { name: "Shoulder press", repNoun: "Reps",  make: () => new PressAnalyzer() },
 };
 
 export const PRIORITY = P;

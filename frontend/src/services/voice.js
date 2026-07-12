@@ -14,6 +14,7 @@ const COMMANDS = [
   { intent: "pushup",  re: /\b(push[- ]?ups?|press[- ]?ups?)\b/ },
   { intent: "curl",    re: /\b(curls?|biceps?)\b/ },
   { intent: "jump",    re: /\b(jumps?|vertical)\b/ },
+  { intent: "press",   re: /\b(shoulder press|overhead|press)\b/ },
   { intent: "status",  re: /\b(how am i doing|score|status|how many)\b/ },
   { intent: "help",    re: /\b(help|what can i say|commands)\b/ },
   { intent: "reset-chat", re: /\b(new chat|reset chat|forget that|start over)\b/ },

@@ -107,6 +107,30 @@ check(`high knees: hip-height drive scores 100 (got ${highDrive})`, highDrive ==
 check(`high knees: shallow drive is penalized (got ${shallowDrive})`, shallowDrive !== null && shallowDrive < 85);
 
 
+// --- shoulder press: rack->lockout cycles count; soft lockout penalized ---
+function pressPose(elbowDeg) {
+  const lm = new Array(33).fill(null).map(() => ({ x: 0.5, y: 0.5, z: 0, visibility: 1 }));
+  lm[11] = { x: 0.44, y: 0.35, z: 0, visibility: 1 }; lm[12] = { x: 0.56, y: 0.35, z: 0, visibility: 1 };
+  lm[23] = { x: 0.46, y: 0.62, z: 0, visibility: 1 }; lm[24] = { x: 0.54, y: 0.62, z: 0, visibility: 1 };
+  // place elbow/wrist to produce the requested elbow angle at the joint
+  const rad = ((180 - elbowDeg) * Math.PI) / 180;
+  lm[13] = { x: 0.44, y: 0.22, z: 0, visibility: 1 }; lm[14] = { x: 0.56, y: 0.22, z: 0, visibility: 1 };
+  lm[15] = { x: 0.44 + Math.sin(rad) * 0.13, y: 0.22 - Math.cos(rad) * 0.13, z: 0, visibility: 1 };
+  lm[16] = { x: 0.56 - Math.sin(rad) * 0.13, y: 0.22 - Math.cos(rad) * 0.13, z: 0, visibility: 1 };
+  return lm;
+}
+function pressRep(analyzer, topAngle) {
+  let score = null;
+  for (let i = 0; i < 6; i++) analyzer.update(pressPose(topAngle));
+  for (let i = 0; i < 6; i++) { const r = analyzer.update(pressPose(70)); if (r.repDone) score = r.repScore; }
+  return score;
+}
+const press = EXERCISES.press.make();
+const fullLockout = pressRep(press, 172);
+const softLockout = pressRep(press, 140);
+check(`shoulder press: full lockout scores 100 (got ${fullLockout})`, fullLockout === 100);
+check(`shoulder press: soft lockout penalized (got ${softLockout})`, softLockout !== null && softLockout <= 70);
+
 // --- plank: straight line accrues held seconds; sag stops the clock ---
 function plankPose(sag) {
   const lm = new Array(33).fill(null).map(() => ({ x: 0.5, y: 0.9, z: 0, visibility: 1 }));

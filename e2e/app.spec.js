@@ -23,8 +23,8 @@ test("landing page: hero, photos, features, launch CTA", async ({ page }) => {
 test("app: sign-in modal, guest entry, tab navigation", async ({ page }) => {
   await page.goto("/app.html");
   await dismissWelcome(page);
-  // 7 drills present
-  await expect(page.locator(".ex-card")).toHaveCount(7);
+  // 8 drills present
+  await expect(page.locator(".ex-card")).toHaveCount(8);
   // tabs: progress shows, train hides
   await page.click('a[data-tab="progress"]');
   await expect(page.locator("#progress")).toBeVisible();

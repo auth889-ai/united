@@ -145,6 +145,7 @@ const ANGLE_TRIPLES = {
   squat: [[LM.L_HIP, LM.L_KNEE, LM.L_ANKLE], [LM.R_HIP, LM.R_KNEE, LM.R_ANKLE]],
   pushup: [[LM.L_SHOULDER, LM.L_ELBOW, LM.L_WRIST], [LM.R_SHOULDER, LM.R_ELBOW, LM.R_WRIST]],
   curl: [[LM.L_SHOULDER, LM.L_ELBOW, LM.L_WRIST], [LM.R_SHOULDER, LM.R_ELBOW, LM.R_WRIST]],
+  press: [[LM.L_SHOULDER, LM.L_ELBOW, LM.L_WRIST], [LM.R_SHOULDER, LM.R_ELBOW, LM.R_WRIST]],
 };
 
 function drawLabel(text, x, y) {
@@ -893,7 +894,7 @@ function handleIntent(intent, text) {
     case "stop":
       if (state.running) finishSession();
       break;
-    case "squat": case "pushup": case "curl": case "jump": case "jacks": case "knees": case "plank":
+    case "squat": case "pushup": case "curl": case "jump": case "jacks": case "knees": case "plank": case "press":
       selectExercise(intent);
       speak(`${EXERCISES[intent].name} selected. Say start when you're ready.`, { force: true });
       break;

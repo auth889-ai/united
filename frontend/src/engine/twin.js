@@ -5,6 +5,16 @@
 // deviation in measurable units: "Torso leaned 13° more than your best rep."
 
 export const TWIN_DIMS = {
+  press: [
+    {
+      key: "lockout", threshold: 6, worseWhenHigher: false, // lower max elbow = weaker lockout
+      phrase: (d) => `Lockout ${d}° short of your best rep — press all the way up.`,
+    },
+    {
+      key: "lean", threshold: 5, worseWhenHigher: true,
+      phrase: (d) => `Leaned back ${d}° more than your best rep — ribs down.`,
+    },
+  ],
   squat: [
     {
       key: "depth", threshold: 5, worseWhenHigher: true, // higher knee angle = shallower

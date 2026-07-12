@@ -31,11 +31,11 @@ but the webcam everyone already owns.
 ## 🏋️ What it does
 FormCoach AI watches you train and coaches you in real time:
 
-- **Seven drills across the four pillars every sport trains** — including an isometric
-  plank with a live hold timer — — strength (squats,
-  push-ups, curls), explosive power (vertical jump), and conditioning/agility
-  (jumping jacks, high knees — football and basketball staples) — each with its own
-  joint-angle state machine over 33 tracked body landmarks.
+- **Eight drills across the four pillars every sport trains** — strength (squats,
+  push-ups, curls, shoulder press with a back-arch safety check), explosive power
+  (vertical jump), conditioning/agility (jumping jacks, high knees — football and
+  basketball staples), and core (an isometric plank with a live hold timer) — each
+  with its own joint-angle state machine over 33 tracked body landmarks.
 - **Scores every rep 0–100** against common form-risk patterns — squat depth, torso
   lean, body-line collapse, elbow drift — and shows a live form-score ring.
   (A coaching aid, not a medical diagnostic tool.)
