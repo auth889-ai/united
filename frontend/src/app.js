@@ -1068,11 +1068,10 @@ async function askCoach(question, { speakAnswer = true } = {}) {
   // 2) local streaming AI with session stats + in-chat memory
   $("memoryVoiceStatus").textContent = "🧠 Memory backend offline — answering from this device.";
   let first = true;
-  if (speakAnswer) coachTalking = true;
   const reply = await coachReplyStream(q, mySessions(), (sentence) => {
     if (first) { pending.classList.remove("thinking"); pending.textContent = ""; first = false; }
     pending.textContent += (pending.textContent ? " " : "") + sentence;
-    if (speakAnswer) speakQueued(sentence);
+    if (speakAnswer) { coachTalking = true; speakQueued(sentence); }
   });
   if (speakAnswer) {
     // release once the queued sentences drain — bounded, never stuck
@@ -1095,7 +1094,7 @@ async function askCoach(question, { speakAnswer = true } = {}) {
 
 const MemorySR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let memoryRec = null;
-let voiceLoop = { active: false, target: "chat", listening: false };
+let voiceLoop = { active: false, target: "chat", listening: false, answering: false, timer: null };
 
 function isStopPhrase(text) {
   // only short, direct commands — "should I stop leaning?" is a question
@@ -1112,6 +1111,8 @@ function setVoiceLoopUI(active, target = "chat", label = "") {
 
 function stopVoiceLoop(message = "Voice chat stopped.") {
   voiceLoop.active = false;
+  voiceLoop.answering = false;
+  clearTimeout(voiceLoop.timer);
   stopMicMeter();
   voiceLoop.listening = false;
   memoryRec?.stop();
@@ -1135,6 +1136,7 @@ function listenOnce(target = "chat") {
   if (coachTalking) { setTimeout(() => listenOnce(target), 300); return; }
   if (memoryRec) memoryRec.stop();
   voiceLoop.listening = true;
+  vlog("rec starting");
   setVoiceLoopUI(true, target, "Listening…");
   memoryRec = new MemorySR();
   memoryRec.lang = "en-US";
@@ -1143,32 +1145,47 @@ function listenOnce(target = "chat") {
   memoryRec.onresult = async (e) => {
     const last = e.results[e.results.length - 1];
     const text = last[0].transcript;
+    vlog(`onresult final=${last.isFinal} talking=${coachTalking} "${text.slice(0, 30)}"`);
     // without headphones the mic picks up the coach's own voice — discard
     // ANYTHING heard while the coach is talking, before any other handling
-    // (this once made the coach hear its own "say stop" and stop itself)
     if (coachTalking) { $("memoryVoiceStatus").textContent = "🎙 (ignored — I was talking)"; return; }
     if (!last.isFinal) {
       $("memoryVoiceStatus").textContent = `🎙 Heard: “${text.trim()}…”`;
       return;
     }
-    voiceLoop.listening = false;
+    // accept exactly ONE final result per session — close it immediately so
+    // no stale result from this session can ever re-enter the pipeline
+    const rec = memoryRec;
     memoryRec = null;
+    voiceLoop.listening = false;
+    try { rec.onresult = null; rec.abort(); } catch { /* already gone */ }
     if (isStopPhrase(text)) {
       stopVoiceLoop("Voice chat stopped.");
       await speakCoachText("Voice chat stopped.");
       return;
     }
-    await askCoach(text, { speakAnswer: true });
-    const relisten = () => {
-      if (!voiceLoop.active) return;
-      if (coachTalking) { setTimeout(relisten, 400); return; }
-      listenOnce(target);
-    };
-    setTimeout(relisten, 250);
+    voiceLoop.answering = true;
+    try {
+      // hard cap — a hung model/backend must never wedge the loop
+      await Promise.race([
+        askCoach(text, { speakAnswer: true }),
+        new Promise((r) => setTimeout(r, 90_000)),
+      ]);
+    } finally {
+      voiceLoop.answering = false;
+      coachTalking = false; // belt-and-braces: never leave this stuck
+    }
+    // Chrome keeps flaky state between recognition sessions inside one
+    // "conversation" — so every new turn re-runs the FULL start path that
+    // provably works on the first turn: clean stop, clean start.
+    if (voiceLoop.active) {
+      const t = voiceLoop.target;
+      stopVoiceLoop("");
+      setTimeout(() => toggleVoiceLoop(t, { quiet: true }), 500);
+    }
   };
   memoryRec.onerror = (e) => {
-    voiceLoop.listening = false;
-    memoryRec = null;
+    vlog(`onerror ${e.error}`);
     if (e.error === "not-allowed" || e.error === "service-not-allowed") {
       stopVoiceLoop("🎙 Microphone blocked — click the address-bar icon → Microphone → Allow, then reload.");
       return;
@@ -1177,20 +1194,25 @@ function listenOnce(target = "chat") {
       stopVoiceLoop("🎙 Voice input needs internet (Chrome's speech service). Typed chat works offline.");
       return;
     }
-    // no-speech / aborted — say so, keep listening
     if (e.error === "no-speech") $("memoryVoiceStatus").textContent = "🎙 Didn't catch that — listening again…";
-    if (voiceLoop.active) setTimeout(() => listenOnce(target), 700);
+    // onend always follows and handles the restart
   };
+  // Chrome can end a session with NO result and NO error (silence timeout).
+  // onend is the only guaranteed event — so onend owns the restart. This is
+  // what kept "auto-stopping" the conversation after one answer.
   memoryRec.onend = () => {
+    vlog("rec.onend");
     voiceLoop.listening = false;
     memoryRec = null;
+    scheduleRelisten();
   };
   try {
     memoryRec.start();
   } catch {
     voiceLoop.listening = false;
     memoryRec = null;
-    setVoiceLoopUI(false, target, "Microphone is busy or blocked. Turn off other voice control and try again.");
+    $("memoryVoiceStatus").textContent = "Microphone busy — retrying…";
+    scheduleRelisten(800);
   }
 }
 
@@ -1242,17 +1264,32 @@ async function preflightMic() {
 
 function stopMicMeter() { $("micLevel").textContent = ""; }
 
-async function toggleVoiceLoop(target = "chat") {
-  if (voiceLoop.active && voiceLoop.target === target) {
+const vlog = (m) => console.debug("[voiceloop]", m);
+function scheduleRelisten(delay = 350) {
+  vlog(`schedule(${delay}) active=${voiceLoop.active} talking=${coachTalking} answering=${voiceLoop.answering} listening=${voiceLoop.listening}`);
+  if (!voiceLoop.active) return;
+  clearTimeout(voiceLoop.timer);
+  voiceLoop.timer = setTimeout(() => {
+    if (!voiceLoop.active) return;
+    if (coachTalking || voiceLoop.answering) { scheduleRelisten(400); return; }
+    vlog("-> listenOnce");
+    listenOnce(voiceLoop.target);
+  }, delay);
+}
+
+async function toggleVoiceLoop(target = "chat", { quiet = false } = {}) {
+  if (voiceLoop.active && voiceLoop.target === target && !quiet) {
     stopVoiceLoop("Voice chat stopped.");
     return;
   }
   voiceLoop.active = true; // before the meter starts — its tick checks this
   voiceLoop.target = target;
-  if (!(await preflightMic())) { voiceLoop.active = false; return; }
-  setVoiceLoopUI(true, target, "Voice chat on. Listening after the beep.");
-  await speakCoachText("Voice chat on. Ask me anything.");
-  $("memoryVoiceStatus").textContent = "🎙 Listening — say \"goodbye\" or press the button to end.";
+  if (!quiet && !(await preflightMic())) { voiceLoop.active = false; return; }
+  setVoiceLoopUI(true, target, quiet ? "Listening…" : "Voice chat on. Listening after the beep.");
+  if (!quiet) {
+    await speakCoachText("Voice chat on. Ask me anything.");
+    $("memoryVoiceStatus").textContent = "🎙 Listening — say \"goodbye\" or press the button to end.";
+  }
   listenOnce(target);
 }
 

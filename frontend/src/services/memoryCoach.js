@@ -7,6 +7,7 @@ async function api(path, payload) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(60_000),
   });
   if (!res.ok) throw new Error(`Backend ${res.status}`);
   return res.json();
