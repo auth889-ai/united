@@ -4,6 +4,8 @@ backend/formcoach.db
 
 tests/
 test1/
+test2/
+test3/
 e2e/node_modules/
 e2e/test-results/
 e2e/playwright-report/
