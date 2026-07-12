@@ -1231,7 +1231,9 @@ async function preflightMic() {
       await new Promise((r) => setTimeout(r, 100));
     }
     await ctx.close().catch(() => {});
-    $("micLevel").textContent = peak > 6 ? "🎚✓ mic OK" : "🎚 quiet mic";
+    // name the device — a wrong Chrome mic selection is invisible otherwise
+    const label = stream.getAudioTracks()[0]?.label || "unknown device";
+    $("micLevel").textContent = peak > 6 ? `🎚✓ ${label}` : `🎚 QUIET — ${label}`;
   } finally {
     stream.getTracks().forEach((t) => t.stop()); // release BEFORE listening
   }
